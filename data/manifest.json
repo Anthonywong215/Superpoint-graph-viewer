@@ -1,0 +1,300 @@
+{
+ "source": "isar_spg.h5",
+ "ply_offset": [
+  673555.125,
+  5266284.5
+ ],
+ "voxel_size": 0.25,
+ "gate": {
+  "min_purity": 0.8,
+  "min_voxels": 10,
+  "p1_total": 10061,
+  "p1_kept": 6818
+ },
+ "deadband": 0.25,
+ "class_names": [
+  "No significant change",
+  "Deposition — stable",
+  "Deposition — transformed",
+  "Erosion — stable",
+  "Erosion — transformed"
+ ],
+ "class_colors": [
+  "#9E9E9E",
+  "#90CAF9",
+  "#1565C0",
+  "#EF9A9A",
+  "#C62828"
+ ],
+ "levels": {
+  "0": {
+   "count": 150000,
+   "fields": {
+    "pos": {
+     "file": "level0_pos.bin",
+     "dtype": "float32",
+     "shape": [
+      150000,
+      3
+     ],
+     "bytes": 1800000
+    },
+    "rgb": {
+     "file": "level0_rgb.bin",
+     "dtype": "uint8",
+     "shape": [
+      150000,
+      3
+     ],
+     "bytes": 450000
+    },
+    "class": {
+     "file": "level0_class.bin",
+     "dtype": "uint8",
+     "shape": [
+      150000
+     ],
+     "bytes": 150000
+    },
+    "elevation": {
+     "file": "level0_elevation.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "m3c2": {
+     "file": "level0_m3c2.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "translation": {
+     "file": "level0_translation.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "rotation": {
+     "file": "level0_rotation.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "stretch": {
+     "file": "level0_stretch.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "distortion": {
+     "file": "level0_distortion.bin",
+     "dtype": "float32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    },
+    "parent1": {
+     "file": "level0_parent1.bin",
+     "dtype": "int32",
+     "shape": [
+      150000
+     ],
+     "bytes": 600000
+    }
+   }
+  },
+  "1": {
+   "count": 10061,
+   "fields": {
+    "pos": {
+     "file": "level1_pos.bin",
+     "dtype": "float32",
+     "shape": [
+      10061,
+      3
+     ],
+     "bytes": 120732
+    },
+    "class": {
+     "file": "level1_class.bin",
+     "dtype": "uint8",
+     "shape": [
+      10061
+     ],
+     "bytes": 10061
+    },
+    "purity": {
+     "file": "level1_purity.bin",
+     "dtype": "float32",
+     "shape": [
+      10061
+     ],
+     "bytes": 40244
+    },
+    "n_voxels": {
+     "file": "level1_nvox.bin",
+     "dtype": "int32",
+     "shape": [
+      10061
+     ],
+     "bytes": 40244
+    },
+    "kept": {
+     "file": "level1_kept.bin",
+     "dtype": "uint8",
+     "shape": [
+      10061
+     ],
+     "bytes": 10061
+    },
+    "parent": {
+     "file": "level1_parent.bin",
+     "dtype": "int32",
+     "shape": [
+      10061
+     ],
+     "bytes": 40244
+    },
+    "edges": {
+     "file": "level1_edges.bin",
+     "dtype": "int32",
+     "shape": [
+      29235,
+      2
+     ],
+     "bytes": 233880
+    }
+   }
+  },
+  "2": {
+   "count": 1756,
+   "fields": {
+    "pos": {
+     "file": "level2_pos.bin",
+     "dtype": "float32",
+     "shape": [
+      1756,
+      3
+     ],
+     "bytes": 21072
+    },
+    "class": {
+     "file": "level2_class.bin",
+     "dtype": "uint8",
+     "shape": [
+      1756
+     ],
+     "bytes": 1756
+    },
+    "purity": {
+     "file": "level2_purity.bin",
+     "dtype": "float32",
+     "shape": [
+      1756
+     ],
+     "bytes": 7024
+    },
+    "n_voxels": {
+     "file": "level2_nvox.bin",
+     "dtype": "int32",
+     "shape": [
+      1756
+     ],
+     "bytes": 7024
+    },
+    "parent": {
+     "file": "level2_parent.bin",
+     "dtype": "int32",
+     "shape": [
+      1756
+     ],
+     "bytes": 7024
+    },
+    "edges": {
+     "file": "level2_edges.bin",
+     "dtype": "int32",
+     "shape": [
+      4761,
+      2
+     ],
+     "bytes": 38088
+    }
+   }
+  },
+  "3": {
+   "count": 244,
+   "fields": {
+    "pos": {
+     "file": "level3_pos.bin",
+     "dtype": "float32",
+     "shape": [
+      244,
+      3
+     ],
+     "bytes": 2928
+    },
+    "class": {
+     "file": "level3_class.bin",
+     "dtype": "uint8",
+     "shape": [
+      244
+     ],
+     "bytes": 244
+    },
+    "purity": {
+     "file": "level3_purity.bin",
+     "dtype": "float32",
+     "shape": [
+      244
+     ],
+     "bytes": 976
+    },
+    "n_voxels": {
+     "file": "level3_nvox.bin",
+     "dtype": "int32",
+     "shape": [
+      244
+     ],
+     "bytes": 976
+    },
+    "edges": {
+     "file": "level3_edges.bin",
+     "dtype": "int32",
+     "shape": [
+      570,
+      2
+     ],
+     "bytes": 4560
+    }
+   }
+  }
+ },
+ "generated_from": "C:\\Users\\wcyan\\Desktop\\MSC_in_Carto202426\\000_Thesis\\SPT_anthony\\superpoint_transformer-master\\data\\isar\\isar_spg.h5",
+ "overlays": {
+  "river_aug": {
+   "file": "river_aug.json",
+   "label": "August river extent",
+   "color": "#ffb04d",
+   "rings": 21,
+   "area_m2": 16269.4
+  },
+  "river_nov": {
+   "file": "river_nov.json",
+   "label": "November river extent",
+   "color": "#c084fc",
+   "rings": 12,
+   "area_m2": 26107.6
+  }
+ }
+}

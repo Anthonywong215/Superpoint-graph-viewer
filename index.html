@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- viewport-fit=cover so the safe-area insets below are non-zero on a
+     notched phone; without it iOS letterboxes the page and the insets read 0. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>NAG Viewer — Isar Superpoint Graph</title>
+<meta name="description" content="An interactive viewer for a nested acyclic graph of topographic change on the Isar: 150,000 voxels and 10,061 superpoints across four partition levels, with the M3C2 distance, the change tensor and the purity gate available as colour.">
+<meta name="author" content="Ching Yeung Wong">
+
+<!-- Declaring an icon at all is what stops the browser making an automatic
+     request for /favicon.ico. That path resolves to the domain root, not to
+     the project directory, so on GitHub Pages it returns the 404 page of
+     whoever owns the account rather than anything belonging to this site. -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+<!-- Link previews. These paths are relative on purpose: the repository can be
+     forked, renamed, or served from any account, and a hard-coded absolute URL
+     would then advertise an image belonging to a different site. Slack,
+     Discord, Signal and Twitter resolve a relative og:image against the page
+     URL. Facebook and LinkedIn want an absolute one, so if a preview there
+     matters, replace the two image lines with the full
+     https://USER.github.io/isar-superpoint-viewer/docs/preview-stack.png address. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Superpoint Graph Viewer — Isar">
+<meta property="og:description" content="Four levels of a change-segmentation partition, in the browser, with no server and no install.">
+<meta property="og:image" content="docs/preview-stack.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="docs/preview-stack.png">
+
+<link rel="stylesheet" href="style.css?v=11">
+</head>
+<body>
+
+<header id="topbar">
+  <div id="topbar-title">
+    <!-- Drawer toggle. Hidden above the mobile breakpoint, where the sidebar
+         is always on screen and a toggle would only be a way to lose it. -->
+    <button id="btn-menu" class="btn icon" aria-label="Show controls"
+            aria-expanded="false" aria-controls="sidebar">☰</button>
+    <span class="dot"></span>
+    <div>
+      <h1>Superpoint Graph Viewer</h1>
+      <p>Isar reach · <code>isar_spg.h5</code> · Chapter 3 partition</p>
+    </div>
+  </div>
+  <div id="topbar-actions">
+    <button id="btn-screenshot" class="btn"
+            title="Save a PNG of the 3D view to your downloads at 2× resolution. Shift-click to type the file name.">Screenshot</button>
+    <button id="btn-reset-camera" class="btn" title="Reset the camera to the default view">Reset view</button>
+    <a id="btn-help" class="btn" href="#" title="What am I looking at?">?</a>
+  </div>
+</header>
+
+<div id="layout">
+
+  <aside id="sidebar">
+
+    <section class="panel">
+      <h2>Level</h2>
+      <div id="level-tabs" class="tabs">
+        <button class="tab active" data-level="0">P<sub>0</sub><span>voxels</span></button>
+        <button class="tab" data-level="1">P<sub>1</sub><span>superpoints</span></button>
+        <button class="tab" data-level="2">P<sub>2</sub><span>superpoints</span></button>
+        <button class="tab" data-level="3">P<sub>3</sub><span>superpoints</span></button>
+        <button class="tab" data-level="stack">stack<span>all 4 levels</span></button>
+      </div>
+      <p class="hint" id="level-hint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Colour by</h2>
+      <div id="colorby-list" class="option-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Display</h2>
+      <label class="row">
+        <span>Point size</span>
+        <input type="range" id="point-size" min="1" max="10" step="0.5" value="3">
+      </label>
+      <label class="row check">
+        <input type="checkbox" id="chk-edges">
+        <span>Adjacency edges <em id="edge-count"></em></span>
+      </label>
+      <label class="row check" id="row-kept-only">
+        <input type="checkbox" id="chk-kept-only">
+        <span>Purity gate only (P<sub>1</sub>, ≥ 0.80, ≥ 10 voxels)</span>
+      </label>
+      <!-- The extents are here rather than under Colour because they are
+           overlays, not encodings: they draw the same lines whatever the
+           points are coloured by, and are meant to be switched on WITH the
+           purity-gate mode, not instead of it. Both can be on at once, which
+           is the useful state: a unit is stable where the two epochs agree
+           and transformed where they differ, so the pair of lines is the
+           boundary the labelling actually follows. -->
+      <label class="row check" id="row-river_aug">
+        <input type="checkbox" id="chk-river_aug">
+        <span><i class="key" data-overlay="river_aug"></i>August river extent
+          <em id="note-river_aug"></em></span>
+      </label>
+      <label class="row check" id="row-river_nov">
+        <input type="checkbox" id="chk-river_nov">
+        <span><i class="key" data-overlay="river_nov"></i>November river extent
+          <em id="note-river_nov"></em></span>
+      </label>
+      <label class="row" id="row-gap">
+        <span>Level spacing</span>
+        <input type="range" id="gap-size" min="2" max="30" step="1" value="12">
+      </label>
+    </section>
+
+    <section class="panel" id="legend-panel">
+      <h2>Legend</h2>
+      <div id="legend-body"></div>
+    </section>
+
+    <section class="panel" id="stats-panel">
+      <h2>Partition</h2>
+      <div id="stats-body">loading…</div>
+    </section>
+
+  </aside>
+
+  <!-- Dimmer behind the open drawer. Only ever visible on small screens, and
+       tapping it closes the drawer, which is the gesture people try first. -->
+  <div id="sidebar-scrim" hidden></div>
+
+  <main id="viewer">
+    <div id="plot"></div>
+    <div id="loading"><div class="spinner"></div><span id="loading-text">Loading manifest…</span></div>
+    <div id="hover-readout"></div>
+
+    <!-- Sits BELOW the Plotly modebar, which owns the top-right corner. Click
+         copies the camera, including the JSON, so a viewpoint used for a
+         thesis figure can be pasted back and reproduced exactly. -->
+    <div id="camera-readout" title="Click to copy this camera (position, angles and the Plotly JSON)"></div>
+
+    <div id="stack-focus-bar" class="hidden">
+      <div class="stack-focus-label" id="stack-focus-value">All levels</div>
+      <input type="range" id="stack-focus-slider" min="0" max="3" step="1" value="0">
+      <div class="stack-focus-ticks">
+        <span>All</span><span>P<sub>1</sub></span><span>P<sub>2</sub></span><span>P<sub>3</sub></span>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<div id="help-overlay" class="hidden">
+  <div id="help-card">
+    <h2>What this is</h2>
+    <p>An interactive rendering of a four-level hierarchical partition of
+      topographic change on the river Isar, measured between two lidar surveys
+      flown in August and November 2024. It is the same partition the printed
+      figures in the accompanying thesis are drawn from, held as a nested
+      acyclic graph.</p>
+    <p><strong>P<sub>0</sub></strong> is the voxel grid (0.25&nbsp;m), shown as a
+      150,000-point sample of the 756,061 voxels for interactive frame rates.
+      <strong>P<sub>1</sub>&nbsp;–&nbsp;P<sub>3</sub></strong> are the three
+      superpoint levels, each shown in full.</p>
+    <p>Superpoint colours for <em>Class</em> use the <strong>rebuilt</strong>
+      label — the majority vote of each unit's voxels after reconstructing the
+      class from <code>Change_Code</code> and <code>is_transformed</code>
+      (dead band 0.25), as the thesis defines it in Section&nbsp;3.6.4. It is
+      <em>not</em> the raw <code>Class5_Code</code> column, which cannot be
+      averaged safely.</p>
+    <p><em>Purity</em> is the share of a unit's voxels holding its majority
+      label, and the gate is the threshold applied before training: a unit
+      passes at purity&nbsp;≥&nbsp;0.80 and at least 10 voxels. 6,818 of the
+      10,061 first-level units pass.</p>
+    <p>The <strong>stack</strong> view offsets P<sub>1</sub>–P<sub>3</sub>
+      vertically above the point cloud and draws a line from every unit to its
+      parent centroid — a literal picture of the hierarchy the contextual
+      graph features are computed over. A slider then appears at the
+      bottom to step through the levels one at a time, greying out the two
+      not currently in focus without hiding them.</p>
+
+      <p>Created by Ching Yeung Wong</p>
+      <p><strong>Topographic Change Segmentation from Multi-
+      Temporal Point Clouds Using Superpoint Graphs</strong></p>
+      <p><em>MSc Cartography, Technical University of Munich, 2026</em></p>
+
+    <p><strong>Screenshot</strong> saves the 3D view as a PNG to your downloads
+      at twice the on-screen resolution, named after the level, focus and
+      colour mode it was taken in. Shift-click it to type a name instead —
+      that is how the file names Chapters&nbsp;3 and&nbsp;4 expect are
+      produced. It captures the plot only: the sidebar, this panel and the
+      hover readout are not part of the image.</p>
+    <button id="help-close" class="btn">Close</button>
+  </div>
+</div>
+
+<script src="vendor/plotly-2.35.2.min.js"></script>
+<!-- The ?v= query string exists so a browser that has already loaded an
+     older app.js from this same localhost:PORT origin (very likely during
+     development, when the server is restarted often but the URL never
+     changes) is forced to treat this as a different resource rather than
+     silently reusing a stale cached copy. Bump it whenever app.js or
+     style.css changes in a way that matters for a browser that already has
+     this page open. -->
+<script src="app.js?v=11"></script>
+</body>
+</html>

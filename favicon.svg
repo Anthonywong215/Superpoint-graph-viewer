@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Three levels of the partition, coarse to fine, in the five class
+       colours the viewer and the printed figures share. Kept to flat shapes
+       so it stays legible at 16 px in a browser tab. -->
+  <rect width="64" height="64" rx="12" fill="#141821"/>
+  <g stroke="#4a5568" stroke-width="2.5" stroke-linecap="round">
+    <path d="M32 15 L18 32 M32 15 L46 32"/>
+    <path d="M18 32 L12 48 M18 32 L25 48 M46 32 L39 48 M46 32 L52 48"/>
+  </g>
+  <circle cx="32" cy="15" r="5.5" fill="#9E9E9E"/>
+  <circle cx="18" cy="32" r="5" fill="#90CAF9"/>
+  <circle cx="46" cy="32" r="5" fill="#EF9A9A"/>
+  <circle cx="12" cy="48" r="4.5" fill="#1565C0"/>
+  <circle cx="25" cy="48" r="4.5" fill="#90CAF9"/>
+  <circle cx="39" cy="48" r="4.5" fill="#C62828"/>
+  <circle cx="52" cy="48" r="4.5" fill="#EF9A9A"/>
+</svg>

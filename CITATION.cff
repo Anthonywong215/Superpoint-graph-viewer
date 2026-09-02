@@ -1,0 +1,42 @@
+# GitHub reads this file and puts a "Cite this repository" button on the
+# repository page, which produces the APA and BibTeX forms automatically.
+cff-version: 1.2.0
+title: "Superpoint Graph Viewer: an interactive nested acyclic graph of topographic change on the Isar"
+message: "If you use this viewer or the partition it draws, please cite the thesis it accompanies."
+type: software
+repository-code: "https://github.com/USER/isar-superpoint-viewer"
+url: "https://USER.github.io/isar-superpoint-viewer/"
+authors:
+  - family-names: Wong
+    given-names: "Ching Yeung"
+    affiliation: "Technical University of Munich"
+license:
+  - MIT          # the viewer code
+  - CC-BY-4.0    # everything under data/
+keywords:
+  - point cloud
+  - change detection
+  - superpoint graph
+  - M3C2
+  - nested acyclic graph
+  - fluvial geomorphology
+  - web cartography
+abstract: >-
+  A static, dependency-free web viewer for the four-level hierarchical
+  partition used in an MSc Cartography thesis on topographic change
+  segmentation. It draws 150,000 voxels and 10,061 first-level superpoints
+  from a nested acyclic graph, with the M3C2 distance, the four change-tensor
+  components, the label purity and the purity gate available as colour, and
+  the digitised water's edge of both survey epochs available as an overlay.
+
+references:
+  - type: thesis
+    title: "Topographic Change Segmentation from Multi-Temporal Point Clouds using Superpoint Graphs"
+    thesis-type: "MSc thesis"
+    authors:
+      - family-names: Wong
+        given-names: "Ching Yeung"
+    institution:
+      name: "Technical University of Munich"
+    year: 2026
+    month: 9

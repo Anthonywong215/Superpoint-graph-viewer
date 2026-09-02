@@ -1,0 +1,23 @@
+# Editor and OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*~
+*.swp
+
+# Working copies made while editing the thesis text alongside the viewer
+*.bak
+*.bak_*
+*.orig
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# The source NAG itself is ~350 MB and belongs in the archive, not in Git.
+# tools/export_nag.py regenerates everything under data/ from it.
+*.h5

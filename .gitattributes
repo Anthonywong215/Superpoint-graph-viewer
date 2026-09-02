@@ -1,2 +1,47 @@
-# Auto detect text files and perform LF normalization
+# ---------------------------------------------------------------------------
+# Binary safety for the payload under data/.
+#
+# This is insurance against a margin, not a fix for a present bug. Measured
+# with tools/check_package.py, all 28 buffers are correctly classified as
+# binary by Git as they stand, and a round trip through a repo with
+# core.autocrlf=true returns every one of them byte-identical.
+#
+# The margin is worth naming, because one file's safety is thinner than the
+# rest. Git's is_binary() in convert.c, which is what governs CRLF rewriting,
+# accepts a file as binary on either of two grounds: a NUL byte, or the ratio
+# test (printable >> 7) < nonprintable. Twenty-seven buffers carry NUL bytes
+# and are safe on the first ground. level0_rgb.bin contains no NUL at all --
+# it is 150000 uint8 RGB triplets -- and is safe only on the second, by
+# 9849 nonprintable bytes against a threshold of 3435.
+#
+# That threshold is a property of the pixel values, not of the format. A
+# re-export with a lighter colour ramp would carry fewer bytes below 32, and
+# if the count fell under about 3500 the file would flip to "text". Git would
+# then rewrite its line endings on add and on checkout, shift every RGB
+# triplet after the first CR-LF pair, and the cloud would render with
+# corrupted colours. Nothing would warn you; the page would still load.
+#
+# The rules below remove that dependency on the data. data/checksums.sha256
+# detects the failure if these rules are ever dropped:
+#     python tools/check_package.py
+# ---------------------------------------------------------------------------
+
+# Normalise line endings for genuine text, so the repo stays LF-in, native-out.
 * text=auto
+
+# Never touch these, whatever the heuristic decides.
+*.bin  binary
+*.h5   binary
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+
+# The vendored Plotly build is third-party. Excluding it from GitHub's language
+# statistics stops a 4.5 MB minified bundle from reporting this as a
+# JavaScript project, and collapses it in pull request diffs.
+vendor/** linguist-vendored
+vendor/** -diff
+
+# Generated payload, not authored source: keep it out of the language stats and
+# out of diffs, where a raw buffer is noise.
+data/*.bin linguist-generated
