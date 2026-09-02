@@ -262,9 +262,11 @@ function setLoading(show, text) {
  * it from here, so the number on screen is never a number that was true on a
  * different device. */
 // A target, not the count: the stride is an integer, so 150,000 at a target of
-// 45,000 gives stride 4 and 37,500 drawn. CHAPTER 4 SECTION 4.8 QUOTES 37,500.
-// Change this and that sentence needs changing with it, or the thesis reports a
-// number the product does not draw.
+// 45,000 gives stride 4 and 37,500 drawn. The thesis no longer quotes that
+// figure -- section 4.8 was rewritten to report what the product offers rather
+// than how it is built -- so this constant is free to change. What must stay
+// true is the claim that did survive there: the interface reports the number
+// actually drawn, never the number exported. updateLevelHint() is what keeps it.
 const MOBILE_P0_TARGET = 45000;
 
 function thinLevel0(data) {
