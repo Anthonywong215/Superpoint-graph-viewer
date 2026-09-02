@@ -17,7 +17,7 @@ Munich, 2026).
 
 <!-- Replace USER with your GitHub account name, here and in the three places
      further down. The repository name is already filled in. -->
-**→ [Open the viewer](To be updated)**
+**→ [Open the viewer](https://anthonywong215.github.io/Superpoint-graph-viewer/)**
 
 ![Three levels of the partition drawn one above another, each unit joined to its parent](docs/preview-stack.png)
 
