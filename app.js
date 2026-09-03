@@ -707,8 +707,22 @@ function applyStackFocus(focus) {
       lineVals.push(dim ? { ...trace._origLine, color: STACK_DIM_COLOR } : trace._origLine);
     }
   });
-  if (markerIdx.length) Plotly.restyle(gd, { marker: markerVals }, markerIdx);
-  if (lineIdx.length) Plotly.restyle(gd, { line: lineVals }, lineIdx);
+  /* These are the only pure-restyle calls in the viewer, and a pure restyle
+     re-renders the gl3d scene from `_fullLayout.scene.camera` -- which goes
+     stale the moment the user orbits. An orbit moves the WebGL camera and
+     fires plotly_relayout, and the handler below records it in state._camera,
+     but nothing writes it back into the layout: Plotly reconciles the two only
+     on a react/relayout pass, which a restyle is not. So the camera has to be
+     handed back together with the style change, or the scene snaps to wherever
+     it stood at the last draw() -- for a user who has not re-rendered since
+     loading, that is the default view, which made dragging this slider look
+     like pressing "Reset view". Plotly.update is restyle plus relayout in one
+     pass, so re-asserting it here costs no extra render. Fixed 2026-09-02
+     after reproducing it with a real drag; a programmatic Plotly.relayout does
+     NOT reproduce it, because it leaves the two in sync. */
+  const camPatch = state._camera ? { 'scene.camera': state._camera } : {};
+  if (markerIdx.length) Plotly.update(gd, { marker: markerVals }, camPatch, markerIdx);
+  if (lineIdx.length) Plotly.update(gd, { line: lineVals }, camPatch, lineIdx);
 }
 
 function offsetPos(pos, dz) {
