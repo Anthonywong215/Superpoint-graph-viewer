@@ -65,7 +65,7 @@
         <button class="tab" data-level="1">P<sub>1</sub><span>superpoints</span></button>
         <button class="tab" data-level="2">P<sub>2</sub><span>superpoints</span></button>
         <button class="tab" data-level="3">P<sub>3</sub><span>superpoints</span></button>
-        <button class="tab" data-level="stack">stack<span>all 4 levels</span></button>
+        <button class="tab" data-level="stack">stack<span>P₁–P₃ together</span></button>
       </div>
       <p class="hint" id="level-hint"></p>
     </section>
@@ -158,25 +158,36 @@
       figures in the accompanying thesis are drawn from, held as a nested
       acyclic graph.</p>
     <p><strong>P<sub>0</sub></strong> is the voxel grid (0.25&nbsp;m), shown as a
-      150,000-point sample of the 756,061 voxels for interactive frame rates.
+      150,000-point sample of the 756,061 voxels for interactive frame rates, thinned
+      again on a small screen.
       <strong>P<sub>1</sub>&nbsp;–&nbsp;P<sub>3</sub></strong> are the three
       superpoint levels, each shown in full.</p>
     <p>Superpoint colours for <em>Class</em> use the <strong>rebuilt</strong>
       label — the majority vote of each unit's voxels after reconstructing the
       class from <code>Change_Code</code> and <code>is_transformed</code>
-      (dead band 0.25), as the thesis defines it in Section&nbsp;3.6.4. It is
+      (dead band 0.25), as the thesis sets out in Section&nbsp;3.8.4. It is
       <em>not</em> the raw <code>Class5_Code</code> column, which cannot be
-      averaged safely.</p>
+      averaged safely. The M3C2 and change-tensor ramps use the fixed saturation
+      ranges of the thesis rather than the data's own extremes, so a colour read
+      here means what the same colour means in a printed figure.</p>
     <p><em>Purity</em> is the share of a unit's voxels holding its majority
       label, and the gate is the threshold applied before training: a unit
       passes at purity&nbsp;≥&nbsp;0.80 and at least 10 voxels. 6,818 of the
       10,061 first-level units pass.</p>
-    <p>The <strong>stack</strong> view offsets P<sub>1</sub>–P<sub>3</sub>
-      vertically above the point cloud and draws a line from every unit to its
-      parent centroid — a literal picture of the hierarchy the contextual
-      graph features are computed over. A slider then appears at the
-      bottom to step through the levels one at a time, greying out the two
-      not currently in focus without hiding them.</p>
+    <p>The <strong>stack</strong> view offsets P<sub>1</sub>, P<sub>2</sub> and
+      P<sub>3</sub> one above another — the voxel level is not part of it — and
+      <em>Hierarchy connectors</em> then draws a line from every unit to its parent
+      centroid, a literal picture of the hierarchy the contextual graph features are
+      computed over. A slider appears at the bottom to bring one level into focus,
+      greying the other two without hiding them.</p>
+    <p>Outside the stack the same checkbox becomes <em>Adjacency edges</em>, which
+      draws the within-level graph instead, joining superpoints that touch. The two
+      digitised water's edges, August (16,269&nbsp;m²) and November (26,108&nbsp;m²),
+      can be laid over any level under any colouring; in the stack they are drawn on
+      the P<sub>1</sub> plane, since it is the P<sub>1</sub> gate they explain.</p>
+    <p>The readout in the top right corner gives the camera's position, its azimuth,
+      elevation and roll, and its zoom relative to the view the page opens at. Click
+      it to copy, so a viewpoint can be restored exactly rather than approximately.</p>
 
       <p>Created by Ching Yeung Wong</p>
       <p><strong>Topographic Change Segmentation from Multi-
@@ -186,8 +197,7 @@
     <p><strong>Screenshot</strong> saves the 3D view as a PNG to your downloads
       at twice the on-screen resolution, named after the level, focus and
       colour mode it was taken in. Shift-click it to type a name instead —
-      that is how the file names Chapters&nbsp;3 and&nbsp;4 expect are
-      produced. It captures the plot only: the sidebar, this panel and the
+      that is how the file names Chapter&nbsp;4 expects are produced. It captures the plot only: the sidebar, this panel and the
       hover readout are not part of the image.</p>
     <button id="help-close" class="btn">Close</button>
   </div>

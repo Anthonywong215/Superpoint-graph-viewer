@@ -15,8 +15,6 @@ It accompanies an MSc Cartography thesis, *Topographic Change Segmentation from
 Multi-Temporal Point Clouds using Superpoint Graphs* (Technical University of
 Munich, 2026).
 
-<!-- Replace USER with your GitHub account name, here and in the three places
-     further down. The repository name is already filled in. -->
 **→ [Open the viewer](https://anthonywong215.github.io/Superpoint-graph-viewer/)**
 
 ![Three levels of the partition drawn one above another, each unit joined to its parent](docs/preview-stack.png)
@@ -62,7 +60,7 @@ Python beyond the data export step.
 
 The repository is laid out to be served as it stands, with `index.html` at the
 root and every path relative, so it works from a project subpath such as
-`https://USER.github.io/isar-superpoint-viewer/` and not only from a domain root.
+`https://anthonywong215.github.io/Superpoint-graph-viewer/` and not only from a domain root.
 
 Create a repository and push this folder as its root:
 
@@ -70,7 +68,7 @@ Create a repository and push this folder as its root:
 git init -b main
 git add .
 git commit -m "Superpoint graph viewer"
-git remote add origin https://github.com/USER/isar-superpoint-viewer.git
+git remote add origin https://github.com/Anthonywong215/Superpoint-graph-viewer.git
 git push -u origin main
 ```
 
