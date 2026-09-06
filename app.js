@@ -834,6 +834,15 @@ const DEFAULT_EYE_DIST = Math.hypot(
   DEFAULT_CAMERA.eye.y - DEFAULT_CAMERA.center.y,
   DEFAULT_CAMERA.eye.z - DEFAULT_CAMERA.center.z);
 
+/* The same reference distance, but for the scene currently drawn. The stack
+ * shrinks the normalised box by a third (see reframeForAspect), so the reset
+ * view there sits at 3.99 rather than 6.00 -- and quoting the readout's zoom
+ * against the flat figure would have it open the stack at x1.50 with nothing
+ * touched, contradicting both the help panel and the README, which promise
+ * that x1.00 is what Reset view gives. Set on every draw; the fallback is the
+ * flat value, for the readout drawn before the first scene exists. */
+let _refEyeDist = null;
+
 /* Plotly's 3D camera is a position, not a set of angles: there is no rotation
  * triple to read off it. The three angles below are derived from the eye, the
  * centre and the up vector, in the convention a reader of a map expects:
@@ -878,7 +887,7 @@ function cameraAngles(cam) {
                             (up.x * n.x + up.y * n.y + up.z * n.z) / ul));
     }
   }
-  return { az, el, roll, dist: d, zoom: DEFAULT_EYE_DIST / d };
+  return { az, el, roll, dist: d, zoom: (_refEyeDist || DEFAULT_EYE_DIST) / d };
 }
 
 const f3 = (v) => (v >= 0 ? ' ' : '') + v.toFixed(3);
@@ -1077,6 +1086,77 @@ async function copyCamera() {
   }, 1100);
 }
 
+/* Keep the framing when the SCENE changes shape. ---------------------------
+ *
+ * `aspectmode: 'data'` does not just make the axes proportional to the data:
+ * it holds the normalised box at unit VOLUME, so the ranges are scaled by one
+ * factor chosen to make x*y*z come to 1. Entering the stack offsets P1, P2 and
+ * P3 by `gap`, which takes the z range from about 10 m to about 34 m, so the
+ * box grows 2.3x in z and shrinks 1.5x in x and y to pay for it. Measured on a
+ * 390px phone: (4.74, 3.39, 0.062) becomes (3.15, 2.25, 0.141).
+ *
+ * The camera is written in those normalised units and Plotly leaves it exactly
+ * where it was, so the reach comes back smaller and pushed off to one side.
+ * That is the offset seen on clicking through to the stack, and the gap slider
+ * causes it too, on every drag.
+ *
+ * The camera is therefore RE-EXPRESSED, not reset. `center` is scaled
+ * component-wise, so it keeps pointing at the same place in the data; the view
+ * direction is kept exactly; and the eye distance is scaled by the change in
+ * the box's overall size, so the reach keeps the share of the frame it had. A
+ * view the user orbited to survives switching levels -- only the units it is
+ * written in change.
+ */
+const ASPECT_TOL = 0.005;      // relative change too small to be worth a redraw
+let _defaultAspect = null;     // the scene DEFAULT_CAMERA was framed against
+
+function aspectVec(gd) {
+  const a = gd && gd._fullLayout && gd._fullLayout.scene
+    ? gd._fullLayout.scene.aspectratio : null;
+  return (a && a.x > 0 && a.y > 0 && a.z > 0) ? { x: a.x, y: a.y, z: a.z } : null;
+}
+
+function aspectDiffers(a, b) {
+  return Math.abs(a.x / b.x - 1) > ASPECT_TOL
+      || Math.abs(a.y / b.y - 1) > ASPECT_TOL
+      || Math.abs(a.z / b.z - 1) > ASPECT_TOL;
+}
+
+const aspectNorm = (a) => Math.hypot(a.x, a.y, a.z);
+
+function remapCamera(cam, from, to) {
+  const c = cam.center || { x: 0, y: 0, z: 0 };
+  const centre = { x: c.x * (to.x / from.x),
+                   y: c.y * (to.y / from.y),
+                   z: c.z * (to.z / from.z) };
+  const v = { x: cam.eye.x - c.x, y: cam.eye.y - c.y, z: cam.eye.z - c.z };
+  const d = Math.hypot(v.x, v.y, v.z) || 1e-9;
+  const nd = Math.min(MAX_EYE_DIST,
+                      Math.max(MIN_EYE_DIST, d * aspectNorm(to) / aspectNorm(from)));
+  const out = cloneCamera(cam);
+  out.center = centre;
+  out.eye = { x: centre.x + v.x / d * nd,
+              y: centre.y + v.y / d * nd,
+              z: centre.z + v.z / d * nd };
+  return out;
+}
+
+function reframeForAspect(gd) {
+  const now = aspectVec(gd);
+  if (!now) return;
+  //  The first draw is P0, which is the scene the default camera was framed
+  //  in, so it defines the units DEFAULT_CAMERA is written in.
+  if (!_defaultAspect) _defaultAspect = now;
+  //  Set every draw, so the readout's zoom stays relative to THIS scene's
+  //  reset view rather than to the flat one.
+  _refEyeDist = DEFAULT_EYE_DIST * aspectNorm(now) / aspectNorm(_defaultAspect);
+  const from = state._camera ? (state._camAspect || _defaultAspect) : _defaultAspect;
+  if (!aspectDiffers(now, from)) { state._camAspect = now; return; }
+  state._camera = remapCamera(state._camera || DEFAULT_CAMERA, from, now);
+  state._camAspect = now;
+  Plotly.relayout(gd, { 'scene.camera': state._camera });
+}
+
 function draw(traces, axisTitles) {
   const layout = {
     paper_bgcolor: '#0b0e13', plot_bgcolor: '#0b0e13',
@@ -1142,6 +1222,7 @@ function draw(traces, axisTitles) {
       if (cr) cr.addEventListener('click', copyCamera);
       state._wiredRelayout = true;
     }
+    reframeForAspect(gd);
     updateCameraReadout();
     updateZoomButtons();
   });

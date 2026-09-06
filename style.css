@@ -18,6 +18,12 @@
      two must not drift apart. Coarse pointers raise the floor below. */
   --zoom-size: clamp(32px, 6.4vmin, 44px);
   --zoom-inset: 14px;
+  /* Horizontal room the zoom buttons occupy, for anything sharing the bottom
+     edge to keep clear of. One button wide plus a gap, because they stack
+     vertically; the short-window rule below turns them into a row and widens
+     this to match. Custom properties substitute lazily, so this picks up
+     whichever --zoom-size the pointer media query settled on. */
+  --zoom-lane: calc(var(--zoom-size) + 10px);
 }
 
 * { box-sizing: border-box; }
@@ -395,6 +401,13 @@ code {
    not hidden, so the limit reads as a limit rather than as a dead button. */
 .zoom-btn:disabled { color: var(--text-faint); opacity: .45; cursor: default; }
 
+/* The bottom-edge overlays. Above 820px the wrapper generates no box at all,
+   so the readout and the slider keep the independent absolute placement they
+   were designed with; the small-screen rule turns it into a real flex column.
+   display:contents is what makes that switch free: an absolutely positioned
+   child still resolves against #viewer, its nearest positioned ancestor. */
+#viewer-bottom { display: contents; }
+
 /* stack-focus slider: bottom-centre so it never collides with the
    bottom-left hover readout or the Plotly modebar top-right */
 #stack-focus-bar {
@@ -518,17 +531,37 @@ code {
   .row.check input[type="checkbox"] { width: 20px; height: 20px; }
   input[type="range"] { height: 34px; }
 
-  /* Overlays shrink and step clear of one another on a small plot. The hover
-     readout stretches the width of the plot here, so it is the one that has
-     to yield: without the reserved lane it would run underneath the zoom
-     buttons, and it is the layer that takes no pointer events. */
+  /* Overlays shrink and step clear of one another on a small plot. There is
+     not room for three of them along the bottom edge at phone width, so the
+     readout and the slider stop being independently placed and become one
+     column that ends where the zoom lane begins. Nothing here depends on the
+     height of either, which is what the previous fixed `bottom: 64px` did and
+     why a three-line readout ran into the slider above it. */
   #camera-readout { top: 10px; right: 10px; font-size: 10px; padding: 5px 8px; }
-  #hover-readout {
-    left: 10px; bottom: 10px; font-size: 10.5px;
-    right: calc(max(10px, env(safe-area-inset-right)) + var(--zoom-size) + 10px);
-  }
-  #stack-focus-bar { width: min(320px, 92%); bottom: 64px; padding: 8px 14px 6px; }
   :root { --zoom-inset: 10px; }
+
+  #viewer-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: absolute;
+    left: max(10px, env(safe-area-inset-left));
+    right: calc(max(10px, env(safe-area-inset-right)) + var(--zoom-lane));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    /* The wrapper covers a wide band of the plot, and the plot underneath has
+       to stay draggable, so only the slider takes pointer events. */
+    pointer-events: none;
+  }
+  /* Static, so the column can order them; every corner offset from the
+     desktop rules has to be undone or it would fight the flex layout. */
+  #viewer-bottom > * {
+    position: static;
+    left: auto; right: auto; bottom: auto;
+    width: auto;
+    transform: none;
+  }
+  #hover-readout { font-size: 10.5px; }
+  #stack-focus-bar { padding: 8px 14px 6px; pointer-events: auto; }
 
   #help-card { width: auto; margin: 12px; max-height: 84vh; overflow-y: auto; }
 }
@@ -596,6 +629,8 @@ code {
 @media (max-height: 420px) {
   #zoom-controls { flex-direction: row; }
   .zoom-btn + .zoom-btn { border-top: 0; border-left: 1px solid var(--border); }
+  /* two buttons wide now, so the lane beside them has to be too */
+  :root { --zoom-lane: calc(var(--zoom-size) * 2 + 10px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

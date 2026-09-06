@@ -30,7 +30,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="docs/preview-stack.png">
 
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -131,7 +131,6 @@
   <main id="viewer">
     <div id="plot"></div>
     <div id="loading"><div class="spinner"></div><span id="loading-text">Loading manifest…</span></div>
-    <div id="hover-readout"></div>
 
     <!-- Sits BELOW the Plotly modebar, which owns the top-right corner. Click
          copies the camera, including the JSON, so a viewpoint used for a
@@ -149,11 +148,25 @@
               title="Zoom out (hold to keep zooming)">−</button>
     </div>
 
-    <div id="stack-focus-bar" class="hidden">
-      <div class="stack-focus-label" id="stack-focus-value">All levels</div>
-      <input type="range" id="stack-focus-slider" min="0" max="3" step="1" value="0">
-      <div class="stack-focus-ticks">
-        <span>All</span><span>P<sub>1</sub></span><span>P<sub>2</sub></span><span>P<sub>3</sub></span>
+    <!-- The two overlays that live along the bottom edge, in one wrapper so
+         they cannot land on top of one another. On a phone all three bottom
+         overlays wanted the same 100 px band: the readout spans the plot
+         width there, the stack slider is 92 % wide, and the zoom buttons are
+         90 px tall, so in the stack view with a point selected they overlapped
+         three deep. Below 820 px this becomes a flex column that stops short
+         of the zoom lane; above it, display:contents dissolves the wrapper and
+         the two keep the independent placement they had (readout bottom left,
+         slider bottom centre). The slider is last so it stays at the bottom,
+         nearest the thumb, and does not move when the readout appears. -->
+    <div id="viewer-bottom">
+      <div id="hover-readout"></div>
+
+      <div id="stack-focus-bar" class="hidden">
+        <div class="stack-focus-label" id="stack-focus-value">All levels</div>
+        <input type="range" id="stack-focus-slider" min="0" max="3" step="1" value="0">
+        <div class="stack-focus-ticks">
+          <span>All</span><span>P<sub>1</sub></span><span>P<sub>2</sub></span><span>P<sub>3</sub></span>
+        </div>
       </div>
     </div>
   </main>
@@ -227,6 +240,6 @@
      silently reusing a stale cached copy. Bump it whenever app.js or
      style.css changes in a way that matters for a browser that already has
      this page open. -->
-<script src="app.js?v=16"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
