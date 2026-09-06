@@ -777,6 +777,41 @@ const DEFAULT_CAMERA = {
   projection: { type: 'perspective' },
 };
 
+/* NEVER HAND DEFAULT_CAMERA TO PLOTLY. Fixed 2026-09-06.
+ *
+ * `Plotly.react` keeps a reference to the camera object it is given rather
+ * than copying it, and a later camera change is MERGED INTO that same object.
+ * So passing the constant meant that re-rendering at the default view, then
+ * orbiting, then re-rendering again wrote the orbited camera into
+ * DEFAULT_CAMERA itself. Reproduced deterministically: after that sequence
+ * `DEFAULT_CAMERA.eye` read back as the moved eye.
+ *
+ * What it broke is not cosmetic. "Reset view" resets to this constant, and the
+ * camera readout exists so a viewpoint used for a printed figure can be
+ * restored exactly -- both silently drift to wherever the user last was, and
+ * the readout's zoom is quoted against a default that no longer means x1.00.
+ *
+ * The clone is structural rather than a spread: a shallow copy still shares
+ * `eye`, `up` and `center`, which are the objects Plotly writes into.
+ *
+ * Frozen as a tripwire. Nothing hands the constant out any more, so the freeze
+ * should never be reached; if a future edit does hand it out, a silently
+ * ignored write is a stuck camera, which is easier to spot than a constant
+ * that quietly stops being constant. */
+function cloneCamera(cam) {
+  return {
+    eye: { ...cam.eye },
+    up: { ...(cam.up || { x: 0, y: 0, z: 1 }) },
+    center: { ...(cam.center || { x: 0, y: 0, z: 0 }) },
+    projection: { ...(cam.projection || { type: 'perspective' }) },
+  };
+}
+Object.freeze(DEFAULT_CAMERA.eye);
+Object.freeze(DEFAULT_CAMERA.up);
+Object.freeze(DEFAULT_CAMERA.center);
+Object.freeze(DEFAULT_CAMERA.projection);
+Object.freeze(DEFAULT_CAMERA);
+
 // Plotly's 3D camera has no discrete "zoom level" like a slippy map -- `eye`
 // is a continuous distance from `center`, in the scene's own normalised
 // units. Close enough to inspect individual superpoints, far enough out to
@@ -868,6 +903,134 @@ function updateCameraReadout() {
     JSON.stringify(cam);
 }
 
+/* Zoom as a control rather than a gesture. ---------------------------------
+ *
+ * It exists because a phone had none. draw() sets `displayModeBar` to
+ * `!isSmallScreen()`, so below 820px Plotly's own zoom buttons are absent and
+ * the only way in was a pinch: undiscoverable, and fighting the one-finger
+ * orbit drag for the same surface.
+ *
+ * A step multiplies the eye's DISTANCE FROM `center` and leaves the direction
+ * untouched, which is what a scroll wheel does and what keeps the framing:
+ * the thing at the middle of the view stays at the middle. Measuring from the
+ * origin instead would drag the camera sideways the moment anything had been
+ * panned -- the same mistake the clamp in draw() carried until 2026-09-02, and
+ * the reason DEFAULT_CAMERA.center is not (0,0,0).
+ *
+ * The bounds are MIN_EYE_DIST and MAX_EYE_DIST, so the buttons cannot reach
+ * anywhere a wheel or a pinch could not. */
+const ZOOM_STEP = 1.25;
+
+function eyeDistance(cam) {
+  const c = cam.center || { x: 0, y: 0, z: 0 };
+  return Math.hypot(cam.eye.x - c.x, cam.eye.y - c.y, cam.eye.z - c.z);
+}
+
+/** Grey out whichever button is against its limit. Called from the relayout
+ *  handler as well, so a wheel or a pinch that reaches the clamp shows it. */
+function updateZoomButtons() {
+  const d = eyeDistance(state._camera || DEFAULT_CAMERA);
+  const inb = document.getElementById('btn-zoom-in');
+  const outb = document.getElementById('btn-zoom-out');
+  //  A tolerance, because the clamp lands exactly ON the limit: an equality
+  //  test would leave the button live at its own dead end, repeating a step
+  //  that can no longer move anything.
+  if (inb) inb.disabled = d <= MIN_EYE_DIST * 1.001;
+  if (outb) outb.disabled = d >= MAX_EYE_DIST * 0.999;
+}
+
+/** Returns the relayout's promise, which the hold below waits on so that a
+ *  held button cannot queue steps faster than the scene can redraw them. */
+function zoomBy(factor) {
+  const gd = document.getElementById('plot');
+  if (!state.plotted || !gd || !gd._fullLayout) return;
+  const cam = state._camera || DEFAULT_CAMERA;
+  const c = cam.center || { x: 0, y: 0, z: 0 };
+  const v = { x: cam.eye.x - c.x, y: cam.eye.y - c.y, z: cam.eye.z - c.z };
+  const dist = Math.hypot(v.x, v.y, v.z);
+  if (!(dist > 0)) return;
+  const want = Math.min(MAX_EYE_DIST, Math.max(MIN_EYE_DIST, dist * factor));
+  if (Math.abs(want - dist) < 1e-9) { updateZoomButtons(); return; }
+  const s = want / dist;
+  //  cloned rather than spread: a spread would leave `center` and `up` shared
+  //  with whatever `cam` is, which on the first step is DEFAULT_CAMERA.
+  const next = cloneCamera(cam);
+  next.eye = { x: c.x + v.x * s, y: c.y + v.y * s, z: c.z + v.z * s };
+  state._camera = next;
+  //  relayout, not react: the traces are untouched, and the relayout handler
+  //  it fires is what refreshes the readout and these buttons.
+  return Plotly.relayout(gd, { 'scene.camera': state._camera });
+}
+
+/* Tap for one step, hold to keep going. ------------------------------------
+ *
+ * pointerdown rather than click, so a touch does not wait on the ~300ms
+ * synthetic mouse event; and because preventDefault here suppresses the click
+ * entirely, Enter and Space need their own path or the buttons would be
+ * unreachable from a keyboard.
+ *
+ * THE HOLD IS PACED BY ELAPSED TIME, NOT BY TICKS. Counting a fixed step per
+ * callback makes the zoom rate depend on how many callbacks actually get
+ * through, which is not something this code controls: browsers throttle timers
+ * hard in a backgrounded document, and a slow device redrawing 150,000 points
+ * gets fewer of them anyway. Measured while throttled, a 1.2 second hold
+ * delivered TWO steps where the interval called for nine. Multiplying by
+ * `factor` raised to the elapsed fraction of a step removes the dependence:
+ * the same hold covers the same distance whatever the tick rate turns out to
+ * be. The contribution of any one tick is capped, so a stall cannot come back
+ * and fling the camera across the whole range at once.
+ *
+ * A timer rather than requestAnimationFrame, which stops entirely in a hidden
+ * document and so cannot be tested from a headless pane. Queueing is handled
+ * directly instead: `busy` gates the next step on the previous relayout having
+ * resolved, so steps cannot pile up faster than the scene redraws. */
+const ZOOM_HOLD_MS = 380;      // before a press becomes a hold
+const ZOOM_STEP_MS = 90;       // wall-clock time one step takes while held
+const ZOOM_TICK_MS = 60;       // how often the hold looks at the clock
+const ZOOM_MAX_TICK_MS = 250;  // most elapsed time one tick may claim
+
+function wireZoomButton(id, factor) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let hold = null, repeat = null, last = 0, busy = false;
+  const stop = () => {
+    clearTimeout(hold);
+    clearInterval(repeat);
+    hold = repeat = null;
+    busy = false;
+  };
+  const tick = () => {
+    //  The limit can be reached mid-hold, and a disabled button stops firing
+    //  pointer events, so nothing else would end the loop.
+    if (el.disabled) { stop(); return; }
+    //  Skipped time is not lost: `last` is left alone, so the next tick to get
+    //  through claims it, up to the cap.
+    if (busy) return;
+    const now = performance.now();
+    const dt = Math.min(ZOOM_MAX_TICK_MS, now - last);
+    last = now;
+    busy = true;
+    Promise.resolve(zoomBy(Math.pow(factor, dt / ZOOM_STEP_MS)))
+      .catch(() => {})
+      .then(() => { busy = false; });
+  };
+  el.addEventListener('pointerdown', (ev) => {
+    if (el.disabled) return;
+    ev.preventDefault();
+    zoomBy(factor);                       // the tap, in full, straight away
+    hold = setTimeout(() => {
+      last = performance.now();
+      repeat = setInterval(tick, ZOOM_TICK_MS);
+    }, ZOOM_HOLD_MS);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(
+    (evt) => el.addEventListener(evt, stop));
+  window.addEventListener('blur', stop);
+  el.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); zoomBy(factor); }
+  });
+}
+
 /* Copy on click. navigator.clipboard needs a secure context, which localhost
  * satisfies but file:// does not, and the README tells the reader they may
  * open this straight off a disk during the defence -- so the textarea route
@@ -931,7 +1094,8 @@ function draw(traces, axisTitles) {
       aspectmode: 'data',
       xaxis: axisStyle(axisTitles.x), yaxis: axisStyle(axisTitles.y), zaxis: axisStyle(axisTitles.z),
       bgcolor: '#0b0e13',
-      camera: state._camera || DEFAULT_CAMERA,
+      //  cloned, never the constant itself -- see cloneCamera
+      camera: cloneCamera(state._camera || DEFAULT_CAMERA),
     },
     uirevision: 'keep',
   };
@@ -971,6 +1135,7 @@ function draw(traces, axisTitles) {
           state._camera = cam;
         }
         updateCameraReadout();
+        updateZoomButtons();
       });
       gd.on('plotly_click', onPointClick);
       const cr = document.getElementById('camera-readout');
@@ -978,6 +1143,7 @@ function draw(traces, axisTitles) {
       state._wiredRelayout = true;
     }
     updateCameraReadout();
+    updateZoomButtons();
   });
   state.plotted = true;
 }
@@ -1335,6 +1501,10 @@ function wireControls() {
     state._camera = undefined;
     renderCurrentLevel();
   });
+
+  //  Zoom in shortens the eye distance, so its factor is the reciprocal.
+  wireZoomButton('btn-zoom-in', 1 / ZOOM_STEP);
+  wireZoomButton('btn-zoom-out', ZOOM_STEP);
   document.getElementById('btn-help').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('help-overlay').classList.remove('hidden');

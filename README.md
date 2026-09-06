@@ -287,6 +287,34 @@ zoom level the way a slippy map does — `eye` is a continuous distance in the
 scene's own normalised units — so these bounds were picked empirically around
 the default camera's distance rather than mapped onto any particular number.
 
+The **+ / −** buttons in the bottom right corner multiply that distance by
+`ZOOM_STEP` and leave the direction alone, so zooming never changes what is
+centred, and they honour the same clamp a wheel or a pinch is held to — greying
+out when the camera reaches it. A press is one step; a hold keeps going, paced
+by elapsed time rather than by callbacks, since a browser throttles timers in a
+backgrounded document and a slow device gets fewer of them: multiplying by
+`ZOOM_STEP` raised to the elapsed fraction of a step covers the same distance
+per second of holding either way. Each step waits on the previous relayout, so
+holding cannot queue redraws faster than the scene can draw them.
+
+They are sized from the pointer rather than the viewport width, because that is
+the question actually being asked. `--zoom-size` in `style.css` is
+`clamp(32px, 6.4vmin, 44px)` for a mouse and `clamp(44px, 7.4vmin, 56px)` under
+`@media (pointer: coarse)`, so a phone gets the 44 px this file uses everywhere
+else as a thumb target and a tablet gets more, while the `vmin` term stops them
+outgrowing a short landscape window. They sit inside `env(safe-area-inset-*)`,
+and below 820 px the hover readout — which spans the plot there — reserves a
+lane beside them rather than running underneath.
+
+**Never hand `DEFAULT_CAMERA` to Plotly.** `Plotly.react` keeps a reference to
+the camera object it is given and merges later changes into it, so passing the
+constant let a re-render, an orbit and a second re-render write the moved
+camera into `DEFAULT_CAMERA` itself. Reset view then reset to nothing, and the
+readout's `zoom ×1.00` stopped meaning the view the page opens at, which is the
+whole basis for reproducing a figure's viewpoint. `cloneCamera()` copies it
+structurally — a spread is not enough, since `eye`, `up` and `center` are the
+objects Plotly writes into — and the constant is frozen as a tripwire.
+
 ## Phones and tablets
 
 Three layout regimes, not one breakpoint, because the sidebar and the plot stop
@@ -327,8 +355,9 @@ on a different device. Only P₀ is touched; P₁ is 10,061 points and the level
 above it are smaller.
 
 The Plotly modebar is switched off below 820 px. Its buttons are about 20 px,
-they are revealed on hover, and they sit on top of the camera readout; orbit,
-pan and pinch-zoom all work by touch without it.
+they are revealed on hover, and they sit on top of the camera readout; orbit
+and pan work by touch without it, and the zoom buttons described above replace
+the one control a touch screen was otherwise left to guess at.
 
 ## Saving a screenshot
 

@@ -10,6 +10,14 @@
   --accent-dim: #2b4a63;
   --mono: "Cascadia Code", "SFMono-Regular", Consolas, Menlo, monospace;
   --sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+
+  /* Zoom button edge. Keyed on vmin rather than vw so a phone in landscape,
+     where width is plentiful and height is not, does not get a button taller
+     than the plot it sits in. It is a custom property on :root rather than a
+     local one because #hover-readout has to reserve a lane beside it, and the
+     two must not drift apart. Coarse pointers raise the floor below. */
+  --zoom-size: clamp(32px, 6.4vmin, 44px);
+  --zoom-inset: 14px;
 }
 
 * { box-sizing: border-box; }
@@ -340,6 +348,53 @@ code {
 #camera-readout .k { opacity: .62; }
 #camera-readout.copied { color: #7ee2a8; border-color: #2f6f4e; }
 
+/* Zoom buttons: bottom-right, the one corner nothing else claims. They are
+   the only zoom a phone has, since the modebar is off below 820px, so they
+   are sized as touch targets first and shrink towards a mouse, not the other
+   way round. The safe-area insets matter here more than anywhere else on the
+   page: on a notched phone in landscape this corner is exactly where the
+   rounded edge and the home indicator are. */
+#zoom-controls {
+  position: absolute;
+  right: max(var(--zoom-inset), env(safe-area-inset-right));
+  bottom: max(var(--zoom-inset), env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  background: #0b0e13cc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;                 /* clips the buttons to the rounded corner */
+  backdrop-filter: blur(4px);
+}
+.zoom-btn {
+  width: var(--zoom-size);
+  height: var(--zoom-size);
+  /* The glyphs are a plus and a minus, so the type can be a straight fraction
+     of the button without any of the fitting a word would need. */
+  font-size: calc(var(--zoom-size) * 0.46);
+  font-family: var(--sans);
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  /* A held button must not select the glyph, scroll the page, or hand the
+     gesture to Plotly's orbit. touch-action is what stops the last two. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background .12s, color .12s;
+}
+.zoom-btn + .zoom-btn { border-top: 1px solid var(--border); }
+.zoom-btn:hover:not(:disabled) { background: #ffffff14; color: var(--text); }
+.zoom-btn:active:not(:disabled) { background: #ffffff24; }
+.zoom-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Disabled means the camera is against MIN_EYE_DIST or MAX_EYE_DIST. Shown,
+   not hidden, so the limit reads as a limit rather than as a dead button. */
+.zoom-btn:disabled { color: var(--text-faint); opacity: .45; cursor: default; }
+
 /* stack-focus slider: bottom-centre so it never collides with the
    bottom-left hover readout or the Plotly modebar top-right */
 #stack-focus-bar {
@@ -463,10 +518,17 @@ code {
   .row.check input[type="checkbox"] { width: 20px; height: 20px; }
   input[type="range"] { height: 34px; }
 
-  /* Overlays shrink and step clear of one another on a small plot. */
+  /* Overlays shrink and step clear of one another on a small plot. The hover
+     readout stretches the width of the plot here, so it is the one that has
+     to yield: without the reserved lane it would run underneath the zoom
+     buttons, and it is the layer that takes no pointer events. */
   #camera-readout { top: 10px; right: 10px; font-size: 10px; padding: 5px 8px; }
-  #hover-readout { left: 10px; right: 10px; bottom: 10px; font-size: 10.5px; }
+  #hover-readout {
+    left: 10px; bottom: 10px; font-size: 10.5px;
+    right: calc(max(10px, env(safe-area-inset-right)) + var(--zoom-size) + 10px);
+  }
   #stack-focus-bar { width: min(320px, 92%); bottom: 64px; padding: 8px 14px 6px; }
+  :root { --zoom-inset: 10px; }
 
   #help-card { width: auto; margin: 12px; max-height: 84vh; overflow-y: auto; }
 }
@@ -521,6 +583,19 @@ code {
 @media (pointer: coarse) {
   #camera-readout { padding: 8px 11px; }        /* easier to tap to copy */
   .option-list .opt { min-height: 40px; }
+
+  /* 44px is the floor this file already uses for anything a thumb has to
+     hit, and the zoom buttons are the only control living over the plot, so
+     they get it too. The vmin term still lets them grow on a tablet. */
+  :root { --zoom-size: clamp(44px, 7.4vmin, 56px); }
+}
+
+/* A short window puts the stack-focus bar back on the bottom edge, where a
+   full-height zoom stack would crowd it, so the buttons flatten into a row
+   and keep out of the middle. */
+@media (max-height: 420px) {
+  #zoom-controls { flex-direction: row; }
+  .zoom-btn + .zoom-btn { border-top: 0; border-left: 1px solid var(--border); }
 }
 
 @media (prefers-reduced-motion: reduce) {

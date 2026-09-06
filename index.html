@@ -30,7 +30,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="docs/preview-stack.png">
 
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -138,6 +138,17 @@
          thesis figure can be pasted back and reproduced exactly. -->
     <div id="camera-readout" title="Click to copy this camera (position, angles and the Plotly JSON)"></div>
 
+    <!-- Zoom. Below 820px the Plotly modebar is switched off entirely, so
+         until now the only zoom a phone had was a pinch: undiscoverable, and
+         competing with the one-finger orbit drag. Bottom right is the only
+         corner no other overlay claims. Press and hold to keep going. -->
+    <div id="zoom-controls" role="group" aria-label="Zoom">
+      <button id="btn-zoom-in" class="zoom-btn" aria-label="Zoom in"
+              title="Zoom in (hold to keep zooming)">+</button>
+      <button id="btn-zoom-out" class="zoom-btn" aria-label="Zoom out"
+              title="Zoom out (hold to keep zooming)">−</button>
+    </div>
+
     <div id="stack-focus-bar" class="hidden">
       <div class="stack-focus-label" id="stack-focus-value">All levels</div>
       <input type="range" id="stack-focus-slider" min="0" max="3" step="1" value="0">
@@ -188,6 +199,11 @@
     <p>The readout in the top right corner gives the camera's position, its azimuth,
       elevation and roll, and its zoom relative to the view the page opens at. Click
       it to copy, so a viewpoint can be restored exactly rather than approximately.</p>
+    <p>The <strong>+</strong> and <strong>−</strong> buttons in the bottom right
+      corner move the camera along its own line of sight, so zooming never changes
+      what is centred. Hold one down to keep going; it stops at the same near and
+      far limits a scroll wheel or a pinch is held to, and greys out there.
+      <em>Reset view</em> returns to ×1.00.</p>
 
       <p>Created by Ching Yeung Wong</p>
       <p><strong>Topographic Change Segmentation from Multi-
@@ -211,6 +227,6 @@
      silently reusing a stale cached copy. Bump it whenever app.js or
      style.css changes in a way that matters for a browser that already has
      this page open. -->
-<script src="app.js?v=12"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
