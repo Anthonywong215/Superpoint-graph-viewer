@@ -8,6 +8,29 @@
   --text-faint: #5b6675;
   --accent: #5fb3ff;
   --accent-dim: #2b4a63;
+  /* Every colour that belonged to the dark ground, named so the light theme
+     below can replace it. The values are the ones this file always had, so
+     the default look, and every screenshot taken from it, is unchanged. */
+  --viewer-bg: #0b0e13;
+  --overlay-bg: #0b0e13cc;
+  --overlay-bg-strong: #12161cd9;
+  --btn-hover-bg: #24303f;
+  --btn-hover-border: #3a4a5c;
+  --readout-hover-border: #3a4756;
+  --tint-hover: #ffffff14;
+  --tint-active: #ffffff24;
+  --tab-active-end: #17293a;
+  --tab-active-text: #fff;
+  --tab-active-sub: #bfe3ff;
+  --code-bg: #0000003a;
+  --code-text: #ffd58a;
+  --copied-text: #7ee2a8;
+  --copied-border: #2f6f4e;
+  --spinner-track: #263140;
+  --scrim: #000c;
+  --help-scrim: #0009;
+  --drawer-shadow: rgba(0, 0, 0, .55);
+  color-scheme: dark;
   --mono: "Cascadia Code", "SFMono-Regular", Consolas, Menlo, monospace;
   --sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 
@@ -26,6 +49,43 @@
   --zoom-lane: calc(var(--zoom-size) + 10px);
 }
 
+/* Light background. Set on <html> by the inline script in index.html before
+   this file paints, and toggled by the Display checkbox. The plot's own
+   colours (ground, axes, legend, lines) live in THEMES in app.js; these are
+   the page's. Near-white rather than white for the page, so the white panels
+   and the white floor of the 3D box still read as surfaces. */
+:root[data-theme="light"] {
+  --bg: #e9edf2;
+  --panel: #ffffff;
+  --panel-2: #f1f4f8;
+  --border: #d3dae3;
+  --text: #17212b;
+  --text-dim: #4a5866;
+  --text-faint: #7a8693;
+  --accent: #1c6fc4;
+  --accent-dim: #dce9f8;
+  --viewer-bg: #eef1f5;
+  --overlay-bg: #ffffffd9;
+  --overlay-bg-strong: #ffffffe6;
+  --btn-hover-bg: #e6ecf2;
+  --btn-hover-border: #b8c3cf;
+  --readout-hover-border: #b3bfcc;
+  --tint-hover: #0000000f;
+  --tint-active: #0000001c;
+  --tab-active-end: #cfe1f5;
+  --tab-active-text: #0f2a44;
+  --tab-active-sub: #2c5a88;
+  --code-bg: #0000000d;
+  --code-text: #8a4b00;
+  --copied-text: #1b7a47;
+  --copied-border: #8fcaa9;
+  --spinner-track: #d3dae3;
+  --scrim: #0f172a73;
+  --help-scrim: #0f172a66;
+  --drawer-shadow: rgba(15, 23, 42, .18);
+  color-scheme: light;
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -41,10 +101,10 @@ html, body {
 code {
   font-family: var(--mono);
   font-size: 0.9em;
-  background: #0000003a;
+  background: var(--code-bg);
   padding: 0.05em 0.35em;
   border-radius: 4px;
-  color: #ffd58a;
+  color: var(--code-text);
 }
 
 /* ---------------------------------------------------------------- topbar */
@@ -105,7 +165,7 @@ code {
   white-space: nowrap;
   transition: background 0.12s, border-color 0.12s;
 }
-.btn:hover { background: #24303f; border-color: #3a4a5c; }
+.btn:hover { background: var(--btn-hover-bg); border-color: var(--btn-hover-border); }
 #btn-help { width: 30px; justify-content: center; font-weight: 700; }
 
 /* Drawer toggle and its scrim. Both are display:none by default and are only
@@ -183,13 +243,13 @@ code {
   text-align: center;
 }
 .tab span { display: block; font-size: 10px; color: var(--text-dim); }
-.tab:hover { border-color: #3a4a5c; }
+.tab:hover { border-color: var(--btn-hover-border); }
 .tab.active {
-  background: linear-gradient(160deg, var(--accent-dim), #17293a);
+  background: linear-gradient(160deg, var(--accent-dim), var(--tab-active-end));
   border-color: var(--accent);
-  color: #fff;
+  color: var(--tab-active-text);
 }
-.tab.active span { color: #bfe3ff; }
+.tab.active span { color: var(--tab-active-sub); }
 #level-tabs .tab[data-level="stack"] { grid-column: 1 / span 2; }
 
 .hint {
@@ -226,6 +286,12 @@ code {
 }
 .opt .swatch.grad-sequential {
   background: linear-gradient(90deg, #12263a, #5fb3ff, #d7f0ff);
+}
+/* The sequential ramp runs the other way on a light ground (SEQUENTIAL_LIGHT
+   in app.js), so its swatch does too. The diverging one is the thesis's and
+   stays put. */
+:root[data-theme="light"] .opt .swatch.grad-sequential {
+  background: linear-gradient(90deg, #c6dcf2, #2f7fc6, #0b2e55);
 }
 .opt .swatch.grad-random {
   background: conic-gradient(#e57373, #64b5f6, #81c784, #ffd54f, #ba68c8, #e57373);
@@ -292,14 +358,14 @@ code {
 
 /* ---------------------------------------------------------------- viewer */
 
-#viewer { flex: 1; position: relative; background: #0b0e13; }
+#viewer { flex: 1; position: relative; background: var(--viewer-bg); }
 #plot { position: absolute; inset: 0; }
 
 #loading {
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 14px;
-  background: #0b0e13;
+  background: var(--viewer-bg);
   color: var(--text-dim);
   font-size: 13px;
   z-index: 5;
@@ -308,14 +374,14 @@ code {
 #loading.hidden { opacity: 0; pointer-events: none; }
 .spinner {
   width: 34px; height: 34px; border-radius: 50%;
-  border: 3px solid #263140; border-top-color: var(--accent);
+  border: 3px solid var(--spinner-track); border-top-color: var(--accent);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 #hover-readout {
   position: absolute; left: 14px; bottom: 14px;
-  background: #0b0e13cc;
+  background: var(--overlay-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 12px;
@@ -336,7 +402,7 @@ code {
    events, because clicking it copies. */
 #camera-readout {
   position: absolute; right: 14px; top: 46px;
-  background: #0b0e13cc;
+  background: var(--overlay-bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 11px;
@@ -350,9 +416,9 @@ code {
   backdrop-filter: blur(4px);
   transition: color .12s, border-color .12s;
 }
-#camera-readout:hover { color: var(--text); border-color: #3a4756; }
+#camera-readout:hover { color: var(--text); border-color: var(--readout-hover-border); }
 #camera-readout .k { opacity: .62; }
-#camera-readout.copied { color: #7ee2a8; border-color: #2f6f4e; }
+#camera-readout.copied { color: var(--copied-text); border-color: var(--copied-border); }
 
 /* Zoom buttons: bottom-right, the one corner nothing else claims. They are
    the only zoom a phone has, since the modebar is off below 820px, so they
@@ -366,7 +432,7 @@ code {
   bottom: max(var(--zoom-inset), env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  background: #0b0e13cc;
+  background: var(--overlay-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;                 /* clips the buttons to the rounded corner */
@@ -394,8 +460,8 @@ code {
   transition: background .12s, color .12s;
 }
 .zoom-btn + .zoom-btn { border-top: 1px solid var(--border); }
-.zoom-btn:hover:not(:disabled) { background: #ffffff14; color: var(--text); }
-.zoom-btn:active:not(:disabled) { background: #ffffff24; }
+.zoom-btn:hover:not(:disabled) { background: var(--tint-hover); color: var(--text); }
+.zoom-btn:active:not(:disabled) { background: var(--tint-active); }
 .zoom-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* Disabled means the camera is against MIN_EYE_DIST or MAX_EYE_DIST. Shown,
    not hidden, so the limit reads as a limit rather than as a dead button. */
@@ -413,7 +479,7 @@ code {
 #stack-focus-bar {
   position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
   width: min(360px, 80%);
-  background: #12161cd9;
+  background: var(--overlay-bg-strong);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 18px 8px;
@@ -438,7 +504,7 @@ code {
 
 #help-overlay {
   position: fixed; inset: 0; z-index: 50;
-  background: #0009;
+  background: var(--help-scrim);
   display: flex; align-items: center; justify-content: center;
 }
 #help-overlay.hidden { display: none; }
@@ -459,7 +525,7 @@ code {
 /* ---------------------------------------------------------------- misc */
 
 ::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-thumb { background: #2a3441; border-radius: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* ------------------------------------------------------- responsive layout
@@ -503,13 +569,13 @@ code {
   }
   #sidebar.open {
     transform: translateX(0);
-    box-shadow: 6px 0 28px rgba(0, 0, 0, .55);
+    box-shadow: 6px 0 28px var(--drawer-shadow);
   }
 
   #sidebar-scrim {
     position: absolute; inset: 0;
     z-index: 25;
-    background: #000c;
+    background: var(--scrim);
     border: 0;
     opacity: 0;
     transition: opacity .22s ease;

@@ -383,9 +383,40 @@ Two things it deliberately does not do. It captures the **plot only** — the
 sidebar, the stack-focus bar and the hover readout are ordinary DOM elements
 beside or over the canvas, and are not part of the image, which is usually what
 a figure wants; for a capture that has to show the interface, use the operating
-system's own screen capture. And it does not re-render onto white: the axis
-titles, tick labels and grid are all styled for the dark theme and would come
-back invisible against a white background.
+system's own screen capture. And it captures the background as it is on
+screen; for a figure going onto a white page, switch on **Light background**
+first (below). A light capture gets a trailing `_light`, as in
+`viewer_P1_kept_purity_light.png`, so it cannot be mistaken for the dark one a
+printed figure was made from.
+
+## Light background
+
+**Light background**, the first option under *Display*, redraws the page and the
+plot on a light ground, for a projector in a bright room or a capture going onto
+a white poster. Dark stays the default, because every screenshot in the thesis
+was taken on it. The choice is remembered in the browser, and it is written into
+the address: a link ending in `?theme=light` always opens light, whatever the
+visitor chose before, so a QR code or a slide can point straight at it.
+
+What changes is only what belonged to the ground: the page, the axes, the
+legend box, the adjacency edges and hierarchy connectors, the grey a stack level
+dims to, and the gate pair, where *kept* is the strong colour on either ground
+and *discarded* the weak one. The data colours the thesis prints do not change:
+the five class colours, the M3C2 and change-tensor ramp with the Table 3.4
+ranges, the river extents and the per-unit hues. Two consequences follow.
+
+- The floor of the scene is white, because the class palette is a print palette
+  and its pale entries read best on white. The diverging ramp's middle is
+  near-white too, so on this ground **values near zero fade**; the legend says
+  so, and the dark background is the one to read small changes on.
+- The sequential ramp used for purity, elevation and voxel count **reverses**, so
+  high values stay the strongest colour. Drawn unchanged, its bright end would
+  be near-white on near-white, and that is where purity lives: most units sit
+  above 0.8. The colour bar and the legend bar follow it.
+
+The plot's colours for both grounds are in `THEMES` in `app.js`; the page's are
+the custom properties at the top of `style.css`, with the light values under
+`:root[data-theme="light"]`.
 
 ## Editing the page
 

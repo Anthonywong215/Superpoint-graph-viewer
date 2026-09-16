@@ -85,6 +85,60 @@ const DIVERGING = [
 const SEQUENTIAL = [
   [0, '#0d1b2a'], [0.35, '#12466b'], [0.7, '#5fb3ff'], [1, '#eaf6ff'],
 ];
+/* The same ramp for a light ground, running the other way. On the dark ground
+ * high values are the bright end; drawn unchanged on a light one, that bright
+ * end is near-white on near-white, and it is where purity lives -- most units
+ * sit above 0.8. Reversed, high values stay the strongest colour. The stops
+ * are the dark ramp's, and the lightness is spread so the top of the range
+ * separates as well as it does on dark (L* 87, 76, 52, 19). Not an exact
+ * mirror: the pale end is held at #c6dcf2, not #eaf6ff, so a low value still
+ * shows on the white floor of the scene. */
+const SEQUENTIAL_LIGHT = [
+  [0, '#c6dcf2'], [0.35, '#8cc1ec'], [0.7, '#2f7fc6'], [1, '#0b2e55'],
+];
+
+/* Plot colours for the two backgrounds. The page's own colours are CSS custom
+ * properties in style.css; these are the ones Plotly needs as values.
+ *
+ * `dark` is exactly what this file has always drawn, so every screenshot in
+ * the thesis stays reproducible. `light` changes no data colour the thesis
+ * prints: the class colours (from the manifest), the diverging ramp with its
+ * Table 3.4 ranges, the river extents and the per-unit hues are shared. What
+ * does change is what belonged to the ground: the axes, the legend box, the
+ * edge and connector lines, the grey the stack focus dims to, the gate pair
+ * (kept is the strong colour on either ground, discarded the weak one) and
+ * the sequential ramp above.
+ *
+ * The floor of the 3D box is white on the light theme, because the class
+ * palette is a print palette and its pale entries (#90CAF9, #EF9A9A) read best
+ * on white; the page around it is a shade darker so the box still reads as a
+ * surface. The cost is the diverging ramp's near-white middle, which fades on
+ * any light ground, so the legend says so rather than the ramp being changed. */
+const THEMES = {
+  dark: {
+    paper: '#0b0e13', floor: '#0e1218', axis: '#5b6675', grid: '#1d2531',
+    zeroline: '#2a3441', legendText: '#cbd5e1', legendBg: '#12161ccc',
+    legendBorder: '#2a3441', colorbarText: '#94a3b8',
+    edge: '#5fb3ff88', connectors: ['#5fb3ff55', '#ffd58a55'],
+    dim: '#3a4452', gate: ['#5b6675', '#5fb3ff'], sequential: SEQUENTIAL,
+  },
+  light: {
+    paper: '#eef1f5', floor: '#ffffff', axis: '#6b7785', grid: '#dde3ea',
+    zeroline: '#c5ced8', legendText: '#1f2933', legendBg: '#ffffffd9',
+    legendBorder: '#d3dae3', colorbarText: '#4a5866',
+    edge: '#1c4f8a66', connectors: ['#1c6fc466', '#b4690e66'],
+    dim: '#9aa3ae', gate: ['#b8c1cc', '#1c6fc4'], sequential: SEQUENTIAL_LIGHT,
+  },
+};
+const THEME_KEY = 'nag-viewer-theme';
+const theme = () => THEMES[state.theme] || THEMES.dark;
+
+/** A CSS gradient from a Plotly colourscale, so a legend bar is drawn from the
+ *  very stops the markers use and cannot drift from them. */
+function cssGradient(scale) {
+  return 'linear-gradient(90deg, ' +
+    scale.map(([p, c]) => `${c} ${Math.round(p * 100)}%`).join(', ') + ')';
+}
 
 /** Fixed saturation half-ranges for the diverging (change) fields, taken
  * directly from Table 3.4 rather than computed from the data. A handful of
@@ -135,6 +189,9 @@ const state = {
   cache: {},                 // level -> {field: typedArray}; '0-thin' on phones
   plotted: false,
   drawerOpen: false,         // small screens only; the sidebar is fixed above 820px
+  //  Read from <html>, where the inline script in index.html has already put
+  //  it, so the first draw is on the right ground with no second render.
+  theme: document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
 };
 
 /* ---------------------------------------------------- responsive plumbing
@@ -339,10 +396,11 @@ function continuousTrace(pos, values, mask, sizePx, opacity, opts) {
   }
   const marker = {
     size: sizePx, opacity,
-    color: vs, colorscale: opts.diverging ? DIVERGING : SEQUENTIAL,
+    color: vs, colorscale: opts.diverging ? DIVERGING : theme().sequential,
     showscale: opts.showscale !== false,
-    colorbar: { title: { text: opts.title, side: 'right', font: { color: '#94a3b8', size: 11 } },
-      tickfont: { color: '#94a3b8', size: 10 }, thickness: 14, len: 0.55,
+    colorbar: { title: { text: opts.title, side: 'right',
+      font: { color: theme().colorbarText, size: 11 } },
+      tickfont: { color: theme().colorbarText, size: 10 }, thickness: 14, len: 0.55,
       outlinewidth: 0, x: 1.0 },
   };
   if (opts.diverging) {
@@ -539,7 +597,7 @@ async function renderCurrentLevel() {
       data.fields.gate1 = keptCat;          // so the legend can count it
     }
     const names = ['discarded', 'kept'];
-    const colors = ['#5b6675', '#5fb3ff'];
+    const colors = theme().gate;
     for (let c = 0; c <= 1; c++) {
       const xs = [], ys = [], zs = [], txt = [];
       for (let i = 0; i < n; i++) {
@@ -573,7 +631,7 @@ async function renderCurrentLevel() {
   }
 
   if (state.showEdges && data.fields.edges) {
-    traces.push(edgeTrace(pos, data.fields.edges, 0, '#5fb3ff88', 1.5));
+    traces.push(edgeTrace(pos, data.fields.edges, 0, theme().edge, 1.5));
     document.getElementById('edge-count').textContent =
       `(${fmtInt(data.fields.edges.length / 2)})`;
   } else {
@@ -650,8 +708,8 @@ async function renderStack(gen) {
   const levelOf = [...t1.map(() => 1), ...t2.map(() => 2), ...t3.map(() => 3)];
 
   if (state.showEdges) {
-    traces.push(connectorTrace(p1, off1, d1.fields.parent, off2, '#5fb3ff55'));
-    traces.push(connectorTrace(p2, off2, d2.fields.parent, off3, '#ffd58a55'));
+    traces.push(connectorTrace(p1, off1, d1.fields.parent, off2, theme().connectors[0]));
+    traces.push(connectorTrace(p2, off2, d2.fields.parent, off3, theme().connectors[1]));
     levelOf.push('edge', 'edge');
     document.getElementById('edge-count').textContent =
       `(${fmtInt(d1.count + d2.count)})`;
@@ -673,7 +731,8 @@ async function renderStack(gen) {
   applyStackFocus(state.stackFocus);
 }
 
-const STACK_DIM_COLOR = '#3a4452';
+//  The grey a level out of focus dims to is theme().dim: a colour just off
+//  the ground, so it has to follow the ground.
 const STACK_FOCUS_LABELS = ['All levels', 'P₁ focused', 'P₂ focused', 'P₃ focused'];
 
 /** Grey out every stack trace not in `focus` (0 = show all normally), without
@@ -699,12 +758,12 @@ function applyStackFocus(focus) {
       if (!trace._origMarker) trace._origMarker = trace.marker;
       markerIdx.push(i);
       markerVals.push(dim
-        ? { ...trace._origMarker, color: STACK_DIM_COLOR, opacity: 0.25, showscale: false }
+        ? { ...trace._origMarker, color: theme().dim, opacity: 0.25, showscale: false }
         : trace._origMarker);
     } else if (trace.line) {
       if (!trace._origLine) trace._origLine = trace.line;
       lineIdx.push(i);
-      lineVals.push(dim ? { ...trace._origLine, color: STACK_DIM_COLOR } : trace._origLine);
+      lineVals.push(dim ? { ...trace._origLine, color: theme().dim } : trace._origLine);
     }
   });
   /* These are the only pure-restyle calls in the viewer, and a pure restyle
@@ -1158,8 +1217,9 @@ function reframeForAspect(gd) {
 }
 
 function draw(traces, axisTitles) {
+  const t = theme();
   const layout = {
-    paper_bgcolor: '#0b0e13', plot_bgcolor: '#0b0e13',
+    paper_bgcolor: t.paper, plot_bgcolor: t.paper,
     margin: { l: 0, r: 0, t: 0, b: 0 },
     showlegend: true,
     /* itemsizing:'constant' is load-bearing, not decoration. Without it a
@@ -1167,13 +1227,13 @@ function draw(traces, axisTitles) {
        size slider -- so at the default of 3 the legend dots were 3px beside
        11.5px text, and dragging the slider down to 1 made them vanish. The
        legend has to stay readable at every point size, so it gets its own. */
-    legend: { font: { color: '#cbd5e1', size: 11.5 }, x: 0.01, y: 0.99,
+    legend: { font: { color: t.legendText, size: 11.5 }, x: 0.01, y: 0.99,
       itemsizing: 'constant',
-      bgcolor: '#12161ccc', bordercolor: '#2a3441', borderwidth: 1 },
+      bgcolor: t.legendBg, bordercolor: t.legendBorder, borderwidth: 1 },
     scene: {
       aspectmode: 'data',
       xaxis: axisStyle(axisTitles.x), yaxis: axisStyle(axisTitles.y), zaxis: axisStyle(axisTitles.z),
-      bgcolor: '#0b0e13',
+      bgcolor: t.paper,
       //  cloned, never the constant itself -- see cloneCamera
       camera: cloneCamera(state._camera || DEFAULT_CAMERA),
     },
@@ -1249,10 +1309,11 @@ function onPointClick(ev) {
 }
 
 function axisStyle(title) {
+  const t = theme();
   return {
-    title: { text: title, font: { color: '#5b6675', size: 11 } },
-    color: '#5b6675', gridcolor: '#1d2531', zerolinecolor: '#2a3441',
-    showbackground: true, backgroundcolor: '#0e1218',
+    title: { text: title, font: { color: t.axis, size: 11 } },
+    color: t.axis, gridcolor: t.grid, zerolinecolor: t.zeroline,
+    showbackground: true, backgroundcolor: t.floor,
     tickfont: { size: 9 },
   };
 }
@@ -1268,10 +1329,11 @@ function axisStyle(title) {
  *     canvas, so they do not appear. For a figure this is usually what you
  *     want; for a screenshot that has to show the interface, use the operating
  *     system's own screen capture instead.
- *   - The colours are exactly what is on screen, dark background included.
- *     Re-rendering onto white is not offered, because the axis titles, tick
- *     labels and grid are all styled for the dark theme and would come back
- *     invisible.
+ *   - The colours are exactly what is on screen, background included. For a
+ *     capture going onto a white page, switch on Light background first: the
+ *     axes, legend and lines are restyled for it, so nothing comes back
+ *     invisible. A light capture is named with a trailing _light so it cannot
+ *     be mistaken for the dark one a thesis figure was made from.
  *
  * SHOT_SCALE multiplies the pixel dimensions without changing the layout, so
  * text and lines keep their proportions and the file is simply larger. At a
@@ -1293,6 +1355,7 @@ function screenshotName() {
   const on = OVERLAY_KEYS.filter((k) => state.overlayOn[k]);
   if (on.length) parts.push(on.map((k) => k.replace('river_', '')).join('-'));
   parts.push(String(state.colorBy).replace(/[^A-Za-z0-9]+/g, '-'));
+  if (state.theme === 'light') parts.push('light');
   return parts.join('_');
 }
 
@@ -1402,7 +1465,7 @@ function updateLegend(mode, lvl, data, mask) {
   const isGate = mode.key === 'kept' || mode.key === 'gate1';
   if (mode.categorical || isGate) {
     const names = isGate ? ['discarded', 'kept'] : state.manifest.class_names;
-    const colors = isGate ? ['#5b6675', '#5fb3ff'] : state.manifest.class_colors;
+    const colors = isGate ? theme().gate : state.manifest.class_colors;
     const arr = isGate ? data.fields[mode.key] : data.fields.class;
     if (!arr) return;
     const counts = new Array(names.length).fill(0);
@@ -1434,7 +1497,11 @@ function updateLegend(mode, lvl, data, mask) {
     // plotted, since the marker colour itself is clipped to this range too.
     lo = -fixedRange; hi = fixedRange;
     note = '<p class="hint">Saturated at the range Table 3.4 uses for Figure 3.5 — ' +
-      'a small number of degenerate-normal points exceed it and are clipped, not hidden.</p>';
+      'a small number of degenerate-normal points exceed it and are clipped, not hidden.' +
+      (state.theme === 'light'
+        ? ' On the light background, values near zero are drawn near-white and fade into ' +
+          'it; the dark background shows them.'
+        : '') + '</p>';
   } else {
     const values = [];
     const raw = data.fields[mode.key];
@@ -1443,6 +1510,11 @@ function updateLegend(mode, lvl, data, mask) {
   }
   const bar = document.createElement('div');
   bar.className = `legend-bar ${grad}`;
+  //  Painted from the colourscale itself. The grad-* classes only ever styled
+  //  the small swatches in the colour list (their rules are scoped to
+  //  `.opt .swatch`), so until 2026-09-15 this bar rendered as a transparent
+  //  283 x 10 px strip with its end labels under nothing.
+  bar.style.background = cssGradient(grad === 'grad-diverging' ? DIVERGING : theme().sequential);
   const labels = document.createElement('div');
   labels.className = 'legend-scale-labels';
   labels.innerHTML = `<span>${fmt(lo)}</span>${grad === 'grad-diverging' ? '<span>0</span>' : ''}<span>${fmt(hi)}</span>`;
@@ -1498,7 +1570,38 @@ function renderStats() {
   });
 }
 
+/* Switch the background. The page follows at once through the CSS custom
+ * properties; the plot is redrawn, because its colours are values handed to
+ * Plotly rather than styles, and every trace carrying a ground-dependent
+ * colour (edges, connectors, the gate pair, the sequential ramp) is rebuilt by
+ * that same render. The camera survives: draw() starts from state._camera.
+ *
+ * The choice is remembered, and written into the address too, so a link
+ * copied from the address bar opens on the same ground it was copied from. */
+function setTheme(name) {
+  state.theme = name === 'light' ? 'light' : 'dark';
+  const root = document.documentElement;
+  if (state.theme === 'light') root.setAttribute('data-theme', 'light');
+  else root.removeAttribute('data-theme');
+  const meta = document.querySelector('meta[name="color-scheme"]');
+  if (meta) meta.setAttribute('content', state.theme);
+  try { localStorage.setItem(THEME_KEY, state.theme); } catch (err) { /* private mode */ }
+  try {
+    const url = new URL(window.location.href);
+    if (state.theme === 'light') url.searchParams.set('theme', 'light');
+    else url.searchParams.delete('theme');
+    window.history.replaceState(null, '', url);
+  } catch (err) { /* file:// in some browsers */ }
+  const box = document.getElementById('chk-light');
+  if (box) box.checked = state.theme === 'light';
+  if (state.plotted) renderCurrentLevel();
+}
+
 function wireControls() {
+  const lightBox = document.getElementById('chk-light');
+  lightBox.checked = state.theme === 'light';
+  lightBox.addEventListener('change', (e) => setTheme(e.target.checked ? 'light' : 'dark'));
+
   document.querySelectorAll('#level-tabs .tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#level-tabs .tab').forEach((b) => b.classList.remove('active'));

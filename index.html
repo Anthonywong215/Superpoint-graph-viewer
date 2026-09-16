@@ -6,6 +6,23 @@
      notched phone; without it iOS letterboxes the page and the insets read 0. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
+<!-- The theme is settled here, before the stylesheet paints, so a page asked
+     to open light never flashes dark first. The address wins, so a link ending
+     in ?theme=light always opens light; then the reader's last choice. Dark is
+     the default because every screenshot in the thesis was taken on it. -->
+<script>
+  (function () {
+    var t = null;
+    try { t = new URLSearchParams(location.search).get('theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') {
+      try { t = localStorage.getItem('nag-viewer-theme'); } catch (e) {}
+    }
+    if (t === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.querySelector('meta[name="color-scheme"]').setAttribute('content', 'light');
+    }
+  })();
+</script>
 <title>NAG Viewer — Isar Superpoint Graph</title>
 <meta name="description" content="An interactive viewer for a nested acyclic graph of topographic change on the Isar: 150,000 voxels and 10,061 superpoints across four partition levels, with the M3C2 distance, the change tensor and the purity gate available as colour.">
 <meta name="author" content="Ching Yeung Wong">
@@ -30,7 +47,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="docs/preview-stack.png">
 
-<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 
@@ -77,6 +94,14 @@
 
     <section class="panel">
       <h2>Display</h2>
+      <!-- A presentation choice, not an encoding: the page and the plot are
+           redrawn on a light ground for a bright room or a white page. Class,
+           M3C2 and tensor colours are the thesis's and do not change; only the
+           sequential ramp reverses, so high values stay the strongest colour. -->
+      <label class="row check" id="row-light">
+        <input type="checkbox" id="chk-light">
+        <span>Light background</span>
+      </label>
       <label class="row">
         <span>Point size</span>
         <input type="range" id="point-size" min="1" max="10" step="0.5" value="3">
@@ -217,10 +242,17 @@
       what is centred. Hold one down to keep going; it stops at the same near and
       far limits a scroll wheel or a pinch is held to, and greys out there.
       <em>Reset view</em> returns to ×1.00.</p>
+    <p><em>Light background</em>, under Display, redraws the page and the plot on a
+      light ground for a bright room or a white page. The class, M3C2 and
+      change-tensor colours stay exactly as printed, so values near zero, which
+      are drawn near-white, fade on it; the purity, elevation and voxel-count ramp
+      reverses so that high values stay the strongest colour. The choice is
+      remembered, and a link ending in <code>?theme=light</code> always opens
+      light.</p>
 
       <p>Created by Ching Yeung Wong</p>
-      <p><strong>Topographic Change Segmentation from Multi-
-      Temporal Point Clouds Using Superpoint Graphs</strong></p>
+      <p><strong>Topographic Change Segmentation from Multi-Temporal Point
+      Clouds Using Superpoint Graphs</strong></p>
       <p><em>MSc Cartography, Technical University of Munich, 2026</em></p>
 
     <p><strong>Screenshot</strong> saves the 3D view as a PNG to your downloads
@@ -240,6 +272,6 @@
      silently reusing a stale cached copy. Bump it whenever app.js or
      style.css changes in a way that matters for a browser that already has
      this page open. -->
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
