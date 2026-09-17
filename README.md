@@ -207,7 +207,9 @@ P₁, P₂, P₃. Moving off *All* greys out the two levels not in focus — fla
 colour, dimmed opacity — without hiding or rebuilding them, so the shape of the
 hierarchy stays visible while attention narrows to one level. This is a pure
 `Plotly.restyle` against colours captured when the traces were first built
-(`applyStackFocus` in `app.js`); no data is re-fetched when it moves.
+(`applyStackFocus` in `app.js`); no data is re-fetched when it moves. The river
+extents, drawn on the P₁ plane, are not part of any level and keep their
+colours at every stop.
 
 ## The river extent overlays
 

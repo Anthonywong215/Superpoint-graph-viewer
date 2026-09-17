@@ -719,10 +719,12 @@ async function renderStack(gen) {
 
   //  In the stack the extents belong on the P1 plane: it is the P1 gate they
   //  explain, and a line floating at true elevation would sit below every
-  //  layer and read as a fourth one.
+  //  layer and read as a fourth one. They are tagged 'overlay', not 1, so the
+  //  focus slider leaves them alone: until 2026-09-16 they counted as P1 and
+  //  went grey with it at the P2 and P3 stops, on either background.
   const stackOverlays = await overlayTraces(gap * 1);
   if (gen !== _renderGen) return;
-  stackOverlays.forEach((t) => { traces.push(t); levelOf.push(1); });
+  stackOverlays.forEach((t) => { traces.push(t); levelOf.push('overlay'); });
 
   if (gen !== _renderGen) return;
   state._stackLevelOf = levelOf;
@@ -738,7 +740,11 @@ const STACK_FOCUS_LABELS = ['All levels', 'P₁ focused', 'P₂ focused', 'P₃ 
 /** Grey out every stack trace not in `focus` (0 = show all normally), without
  * hiding or rebuilding anything -- Plotly.restyle swaps each trace's marker
  * or line back and forth between the colours renderStack originally computed
- * (captured once, on first touch) and a flat grey. No data is re-fetched. */
+ * (captured once, on first touch) and a flat grey. No data is re-fetched.
+ *
+ * The river extents are exempt. They are reference lines in the colours the
+ * thesis prints, not part of any level, and a grey extent reads as neither
+ * epoch, so at every stop they keep their manifest colours. */
 function applyStackFocus(focus) {
   const slider = document.getElementById('stack-focus-slider');
   if (slider) slider.value = focus;
@@ -751,6 +757,7 @@ function applyStackFocus(focus) {
 
   const markerIdx = [], markerVals = [], lineIdx = [], lineVals = [];
   state._stackLevelOf.forEach((lvl, i) => {
+    if (lvl === 'overlay') return;          // the river extents never dim
     const trace = gd.data[i];
     if (!trace) return;
     const dim = focus !== 0 && lvl !== focus;
