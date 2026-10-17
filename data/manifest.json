@@ -174,6 +174,14 @@
       2
      ],
      "bytes": 233880
+    },
+    "pred": {
+     "file": "level1_pred.bin",
+     "dtype": "uint8",
+     "shape": [
+      10061
+     ],
+     "bytes": 10061
     }
    }
   },
@@ -296,5 +304,18 @@
    "rings": 12,
    "area_m2": 26107.6
   }
+ },
+ "prediction": {
+  "source": "cv_predictions.csv",
+  "model": "All features + P2 parent block, the selected configuration",
+  "scheme": "three spatial folds; each unit predicted by the model trained without the fold that holds it",
+  "level": "1",
+  "field": "pred",
+  "not_evaluated": 255,
+  "evaluated": 6818,
+  "correct": 5396,
+  "accuracy": 0.791434,
+  "macro_f1": 0.703854,
+  "mean_iou": 0.56246
  }
 }

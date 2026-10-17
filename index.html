@@ -47,7 +47,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="docs/preview-stack.png">
 
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 
@@ -223,6 +223,13 @@
       label, and the gate is the threshold applied before training: a unit
       passes at purity&nbsp;≥&nbsp;0.80 and at least 10 voxels. 6,818 of the
       10,061 first-level units pass.</p>
+    <p>That class is the <strong>reference</strong>. At P<sub>1</sub>,
+      <em>Predicted class</em> shows the classifier's answer beside it: the class
+      the selected model (all features plus the P<sub>2</sub> parent block)
+      predicted for each unit while the spatial fold holding that unit was left out
+      of training. <em>Prediction against reference</em> marks each unit right or
+      wrong. Only the 6,818 units that pass the gate were predicted; the rest are
+      drawn in a faint grey as not evaluated.</p>
     <p>The <strong>stack</strong> view offsets P<sub>1</sub>, P<sub>2</sub> and
       P<sub>3</sub> one above another — the voxel level is not part of it — and
       <em>Hierarchy connectors</em> then draws a line from every unit to its parent
@@ -272,6 +279,6 @@
      silently reusing a stale cached copy. Bump it whenever app.js or
      style.css changes in a way that matters for a browser that already has
      this page open. -->
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

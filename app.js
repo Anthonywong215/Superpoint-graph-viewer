@@ -106,8 +106,11 @@ const SEQUENTIAL_LIGHT = [
  * Table 3.4 ranges, the river extents and the per-unit hues are shared. What
  * does change is what belonged to the ground: the axes, the legend box, the
  * edge and connector lines, the grey the stack focus dims to, the gate pair
- * (kept is the strong colour on either ground, discarded the weak one) and
- * the sequential ramp above.
+ * (kept is the strong colour on either ground, discarded the weak one), the
+ * sequential ramp above, and the prediction modes' `outcome` colours: wrong is
+ * the loud one on either ground, right a quiet slate, and a unit that was never
+ * predicted a grey close to the floor so it reads as absent rather than as the
+ * grey of the no-change class.
  *
  * The floor of the 3D box is white on the light theme, because the class
  * palette is a print palette and its pale entries (#90CAF9, #EF9A9A) read best
@@ -121,6 +124,7 @@ const THEMES = {
     legendBorder: '#2a3441', colorbarText: '#94a3b8',
     edge: '#5fb3ff88', connectors: ['#5fb3ff55', '#ffd58a55'],
     dim: '#3a4452', gate: ['#5b6675', '#5fb3ff'], sequential: SEQUENTIAL,
+    outcome: { none: '#2c343f', correct: '#8ea4ba', wrong: '#ff4d6d' },
   },
   light: {
     paper: '#eef1f5', floor: '#ffffff', axis: '#6b7785', grid: '#dde3ea',
@@ -128,6 +132,7 @@ const THEMES = {
     legendBorder: '#d3dae3', colorbarText: '#4a5866',
     edge: '#1c4f8a66', connectors: ['#1c6fc466', '#b4690e66'],
     dim: '#9aa3ae', gate: ['#b8c1cc', '#1c6fc4'], sequential: SEQUENTIAL_LIGHT,
+    outcome: { none: '#e1e6eb', correct: '#8393a5', wrong: '#d6204f' },
   },
 };
 const THEME_KEY = 'nag-viewer-theme';
@@ -251,6 +256,11 @@ const COLOR_MODES = {
   ],
   1: [
     { key: 'class', label: 'Class (majority)', swatch: 'grad-random', categorical: true },
+    // The classifier's answer beside that reference, from
+    // tools/export_predictions.py. `needs` hides both modes when the data
+    // directory was exported without it (see modesFor).
+    { key: 'pred', label: 'Predicted class (out of sample)', swatch: 'grad-random', categorical: true, needs: 'pred' },
+    { key: 'agree', label: 'Prediction against reference', swatch: 'grad-random', categorical: true, needs: 'pred' },
     { key: 'kept', label: 'Purity gate (kept / discarded)', swatch: 'grad-random', categorical: true },
     { key: 'purity', label: 'Purity', swatch: 'grad-sequential' },
     { key: 'n_voxels', label: 'Voxel count', swatch: 'grad-sequential' },
@@ -276,6 +286,20 @@ const COLOR_MODES = {
     { key: 'self', label: 'Unit id (structure, per level)', swatch: 'grad-random' },
   ],
 };
+
+/** The colour modes a level offers with the data actually exported. A mode
+ *  that `needs` a field the manifest does not carry -- the prediction modes on
+ *  an export made without tools/export_predictions.py -- is left out of the
+ *  list rather than failing when clicked. */
+function modesFor(level) {
+  const lvl = state.manifest.levels[level];
+  const fields = (lvl && lvl.fields) || {};
+  return COLOR_MODES[level].filter((m) => !m.needs || fields[m.needs]);
+}
+
+/* A P1 unit the purity gate discarded was never predicted; export_predictions.py
+ * writes this code for it. */
+const PRED_NONE = 255;
 
 async function boot() {
   setLoading(true, 'Loading manifest…');
@@ -577,7 +601,8 @@ async function renderCurrentLevel() {
 
   const label3d = buildHoverLabeller(lvl, data);
   let traces = [];
-  const mode = COLOR_MODES[lvl].find((m) => m.key === state.colorBy) || COLOR_MODES[lvl][0];
+  const modes = modesFor(lvl);
+  const mode = modes.find((m) => m.key === state.colorBy) || modes[0];
 
   if (mode.key === 'rgb') {
     traces = rgbTrace(pos, data.fields.rgb, state.pointSize, 0.95, label3d);
@@ -612,6 +637,8 @@ async function renderCurrentLevel() {
         marker: { size: state.pointSize, color: colors[c], opacity: 0.95 },
       });
     }
+  } else if (mode.key === 'pred' || mode.key === 'agree') {
+    traces = predictionTraces(mode.key, pos, data, mask, label3d);
   } else if (mode.key === 'self') {
     traces = structureTrace(pos, indices(n), mask, state.pointSize, 0.95, 'Unit id', label3d);
   } else if (mode.key === 'parent1' || mode.key === 'parent') {
@@ -643,8 +670,67 @@ async function renderCurrentLevel() {
   traces.push(...overlays);
 
   if (gen !== _renderGen) return;
-  draw(traces, axisTitlesFor(lvl));
+  draw(traces, axisTitlesFor(lvl), PREDICTION_TITLES[mode.key]);
   updateLegend(mode, lvl, data, mask);
+}
+
+/* The classifier's answer at P1: for each unit, the class the selected model
+ * predicted while the spatial fold holding that unit was held out of training
+ * (tools/export_predictions.py, from cv_predictions.csv). 'pred' draws it in
+ * the class palette, so switching between it and Class (majority) compares
+ * answer and reference unit by unit; 'agree' reduces the comparison to right
+ * and wrong. Units that were never predicted stay in the scene in a grey close
+ * to the floor, so the reach keeps its outline and a gap reads as not
+ * evaluated, not as missing ground.
+ *
+ * The plot legend gets a title in these two modes only. A capture of the plot
+ * carries no sidebar, and without it a predicted-class picture would be
+ * indistinguishable from a reference one; the existing modes keep their
+ * untitled legend so the thesis screenshots stay reproducible. */
+const PREDICTION_TITLES = {
+  pred: 'Predicted class (out of sample)',
+  agree: 'Prediction against reference',
+};
+
+/** [name, colour, test(i)] per category, in legend order. Shared by the traces
+ *  and the sidebar legend, so the two cannot count differently. */
+function predictionCategories(key, data) {
+  const pred = data.fields.pred, ref = data.fields.class, o = theme().outcome;
+  const cats = key === 'pred'
+    ? state.manifest.class_names.map((name, c) =>
+      [`${c} ${name}`, state.manifest.class_colors[c], (i) => pred[i] === c])
+    : [['correct', o.correct, (i) => pred[i] !== PRED_NONE && pred[i] === ref[i]],
+      ['wrong', o.wrong, (i) => pred[i] !== PRED_NONE && pred[i] !== ref[i]]];
+  cats.push(['not evaluated (purity gate)', o.none, (i) => pred[i] === PRED_NONE]);
+  return cats;
+}
+
+function predictionTraces(key, pos, data, mask, label3d) {
+  const n = data.fields.pred.length;
+  const cats = predictionCategories(key, data);
+  //  The never-predicted units are drawn FIRST. Where markers overlap, the
+  //  scene paints a later trace over an earlier one, and drawn last the faint
+  //  grey covered most of the reach it is only meant to frame (checked on a
+  //  capture, 2026-09-17). legendrank still lists it last.
+  const order = [cats.length - 1, ...cats.slice(0, -1).map((_, k) => k)];
+  const traces = [];
+  for (const k of order) {
+    const [name, color, test] = cats[k];
+    const xs = [], ys = [], zs = [], txt = [];
+    for (let i = 0; i < n; i++) {
+      if (mask && !mask[i]) continue;
+      if (!test(i)) continue;
+      xs.push(pos.x[i]); ys.push(pos.y[i]); zs.push(pos.z[i]);
+      txt.push(label3d(i));
+    }
+    if (!xs.length) continue;
+    traces.push({
+      type: 'scatter3d', mode: 'markers', name, legendrank: k + 1,
+      x: xs, y: ys, z: zs, text: txt, hovertemplate: '%{text}<extra></extra>',
+      marker: { size: state.pointSize, color, opacity: 0.95 },
+    });
+  }
+  return traces;
 }
 
 function indices(n) { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = i; return a; }
@@ -658,7 +744,15 @@ function buildHoverLabeller(lvl, data) {
     const c = data.fields.class ? names[data.fields.class[i]] : '';
     const p = data.fields.purity ? data.fields.purity[i].toFixed(2) : '';
     const nv = data.fields.n_voxels ? data.fields.n_voxels[i] : '';
-    return `P${lvl} unit ${i}<br>class: ${c}<br>purity: ${p}<br>voxels: ${nv}`;
+    if (!data.fields.pred) {
+      return `P${lvl} unit ${i}<br>class: ${c}<br>purity: ${p}<br>voxels: ${nv}`;
+    }
+    //  Where a prediction exists (P1 only), both answers are named, so a
+    //  hover never leaves it open which of the two "class" means.
+    const q = data.fields.pred[i];
+    const said = q === PRED_NONE ? 'not evaluated (purity gate)' : names[q];
+    return `P${lvl} unit ${i}<br>class (reference): ${c}<br>predicted: ${said}` +
+      `<br>purity: ${p}<br>voxels: ${nv}`;
   };
 }
 
@@ -1223,7 +1317,7 @@ function reframeForAspect(gd) {
   Plotly.relayout(gd, { 'scene.camera': state._camera });
 }
 
-function draw(traces, axisTitles) {
+function draw(traces, axisTitles, legendTitle) {
   const t = theme();
   const layout = {
     paper_bgcolor: t.paper, plot_bgcolor: t.paper,
@@ -1236,7 +1330,10 @@ function draw(traces, axisTitles) {
        legend has to stay readable at every point size, so it gets its own. */
     legend: { font: { color: t.legendText, size: 11.5 }, x: 0.01, y: 0.99,
       itemsizing: 'constant',
-      bgcolor: t.legendBg, bordercolor: t.legendBorder, borderwidth: 1 },
+      bgcolor: t.legendBg, bordercolor: t.legendBorder, borderwidth: 1,
+      //  only the prediction modes pass one; see PREDICTION_TITLES
+      title: legendTitle ? { text: `<b>${legendTitle}</b>`, font: { color: t.legendText, size: 11.5 } }
+        : undefined },
     scene: {
       aspectmode: 'data',
       xaxis: axisStyle(axisTitles.x), yaxis: axisStyle(axisTitles.y), zaxis: axisStyle(axisTitles.z),
@@ -1406,7 +1503,7 @@ async function saveScreenshot(ev) {
 function buildColorByList() {
   const el = document.getElementById('colorby-list');
   el.innerHTML = '';
-  const modes = COLOR_MODES[state.level];
+  const modes = modesFor(state.level);
   modes.forEach((m) => {
     const row = document.createElement('div');
     row.className = 'opt' + (m.key === state.colorBy ? ' active' : '');
@@ -1423,7 +1520,7 @@ function buildColorByList() {
 }
 
 function updateColorByAvailability() {
-  const modes = COLOR_MODES[state.level];
+  const modes = modesFor(state.level);
   if (!modes.find((m) => m.key === state.colorBy)) {
     state.colorBy = modes[0].key;
   }
@@ -1467,6 +1564,10 @@ function updateLegend(mode, lvl, data, mask) {
   el.innerHTML = '';
   if (mode.key === 'rgb') {
     el.innerHTML = '<p class="hint">Photogrammetric true colour, per voxel.</p>';
+    return;
+  }
+  if (mode.key === 'pred' || mode.key === 'agree') {
+    predictionLegend(el, mode.key, data, mask);
     return;
   }
   const isGate = mode.key === 'kept' || mode.key === 'gate1';
@@ -1530,6 +1631,33 @@ function updateLegend(mode, lvl, data, mask) {
   if (note) el.insertAdjacentHTML('beforeend', note);
 }
 
+/* Counts per category from the same tests the traces are built with, then the
+ * scores the export recorded. Accuracy and macro-F1 only: they are the two the
+ * manifest reproduces to the thesis's printed three decimals. */
+function predictionLegend(el, key, data, mask) {
+  const n = data.fields.pred.length;
+  for (const [name, color, test] of predictionCategories(key, data)) {
+    let count = 0;
+    for (let i = 0; i < n; i++) if ((!mask || mask[i]) && test(i)) count++;
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.innerHTML = `<span class="sw" style="background:${color}"></span>` +
+      `<span>${name.replace(/^\d /, '')}</span><b style="margin-left:auto">${fmtInt(count)}</b>`;
+    el.appendChild(row);
+  }
+  const s = state.manifest.prediction || {};
+  const scores = s.accuracy !== undefined
+    ? ` Accuracy ${s.accuracy.toFixed(3)} (${fmtInt(s.correct)} of ${fmtInt(s.evaluated)}), ` +
+      `macro-F1 ${s.macro_f1.toFixed(3)}.`
+    : '';
+  el.insertAdjacentHTML('beforeend', '<p class="hint">' +
+    (key === 'pred'
+      ? 'The classifier’s answer. <em>Class (majority)</em> is the reference it is scored against. '
+      : 'Each unit’s predicted class against its reference class. ') +
+    'Out of sample: every unit is predicted by the model trained on the other two ' +
+    'spatial folds.' + scores + '</p>');
+}
+
 function updateLegendStack(mode) {
   const el = document.getElementById('legend-body');
   el.innerHTML = '<p class="hint">P₁ (small) · P₂ (medium) · P₃ (large), stacked bottom to top. ' +
@@ -1549,6 +1677,7 @@ function updateLegendStack(mode) {
 function renderStats() {
   const g = state.manifest.gate;
   const lv = state.manifest.levels;
+  const pr = state.manifest.prediction;    // absent on an export without predictions
   const el = document.getElementById('stats-body');
   const line = (label, val) => `<div class="stat-line"><span>${label}</span><b>${val}</b></div>`;
   el.innerHTML =
@@ -1557,7 +1686,9 @@ function renderStats() {
     line('P₂ superpoints', fmtInt(lv['2'].count)) +
     line('P₃ superpoints', fmtInt(lv['3'].count)) +
     line('Purity gate', `≥ ${g.min_purity}, ≥ ${g.min_voxels} vox.`) +
-    line('P₁ kept', `${fmtInt(g.p1_kept)} / ${fmtInt(g.p1_total)} (${(100 * g.p1_kept / g.p1_total).toFixed(1)} %)`);
+    line('P₁ kept', `${fmtInt(g.p1_kept)} / ${fmtInt(g.p1_total)} (${(100 * g.p1_kept / g.p1_total).toFixed(1)} %)`) +
+    (pr ? line('P₁ predicted right',
+      `${fmtInt(pr.correct)} / ${fmtInt(pr.evaluated)} (${(100 * pr.accuracy).toFixed(1)} %)`) : '');
 
   //  An extent's checkbox is hidden entirely when that overlay has not been
   //  exported, rather than left to fail silently on click. An older data

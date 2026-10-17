@@ -37,6 +37,8 @@ Munich, 2026).
 - **The purity gate at two levels.** At P₁ as the verdict on each unit, and at
   P₀ pushed down onto the voxels, so the discarded third can be seen as ground
   rather than as absent units.
+- **The classifier's result at P₁.** The predicted class beside the reference
+  class, and each unit marked right or wrong, all out of sample (see below).
 - **Both water's edges.** The digitised extent of each survey epoch, draped onto
   the surface, switchable independently.
 - **A recordable viewpoint.** The camera readout can be clicked to copy a
@@ -111,10 +113,10 @@ Git decides text-versus-binary by content, and with `core.autocrlf=true` — the
 Git for Windows default — it rewrites line endings in anything it judges to be
 text. Doing that to a raw buffer shifts every value after the first CR-LF pair.
 
-As the data stands, all 28 buffers are classified correctly and a round trip
+As the data stands, all 29 buffers are classified correctly and a round trip
 returns each one byte-identical. But `is_binary()` in Git's `convert.c` accepts
 a file as binary on either of two grounds: a NUL byte, or the ratio test
-`(printable >> 7) < nonprintable`. Twenty-seven buffers carry NUL bytes and are
+`(printable >> 7) < nonprintable`. Twenty-eight buffers carry NUL bytes and are
 safe unconditionally. `level0_rgb.bin` contains no NUL byte at all — it is
 150,000 uint8 RGB triplets — and is safe only on the second ground, by 9,849
 unprintable bytes against a threshold of 3,435.
@@ -136,6 +138,7 @@ data/               generated payload, about 7 MB (see below)
 vendor/             plotly-2.35.2.min.js, vendored for offline use
 tools/
   export_nag.py     regenerates data/ from the source .h5
+  export_predictions.py  adds the classifier's P1 result from cv_predictions.csv
   check_package.py  verifies the package is complete and host-safe
 docs/               README screenshots only; not used by the page
 ```
@@ -156,9 +159,13 @@ python tools/export_nag.py --h5 /path/to/isar_spg.h5
 ```
 
 `NAG_H5`, `NAG_CONFIG` and `NAG_OUT` do the same job as environment variables.
-Re-run it whenever the partition changes, then regenerate the checksums:
+Re-run it whenever the partition changes. It rewrites `manifest.json`, so run
+the two scripts that add to the manifest after it — the river extents
+(`Python/Claude/river_extent_purity.py` in the thesis tree) and the classifier's
+result — then regenerate the checksums:
 
 ```bash
+python tools/export_predictions.py
 python tools/check_package.py --write
 ```
 
@@ -242,6 +249,35 @@ The overlays are written by a script that also measures what they show, so the
 picture and the numbers reported in the thesis cannot drift apart. That script
 lives with the thesis analysis code rather than in this repository, since it
 reads the original shapefiles.
+
+## The classifier's result at P₁
+
+*Class (majority)* is the **reference**: the majority of each unit's rebuilt
+voxel labels, the label the model is trained and scored against. Two further P₁
+modes show the model's answer beside it:
+
+- **Predicted class (out of sample)**, in the class palette, so switching
+  between it and *Class (majority)* compares answer and reference unit by unit.
+- **Prediction against reference**, each unit right (quiet slate) or wrong (a
+  strong red, drawn on top so errors are not hidden under correct units; at a
+  distance that makes them look more widespread than the 21 % they are, so zoom
+  in or lower the point size before reading proportions off the scene).
+
+Both come from `data/level1_pred.bin`, written by `tools/export_predictions.py`
+from `cv_predictions.csv`: the selected configuration (all features plus the P₂
+parent block), each unit predicted by the model trained without the spatial
+fold that holds it. Only the 6,818 units that pass the purity gate were
+predicted; the other 3,243 carry the code 255 and are drawn in a grey close to
+the floor, first, so they frame the result rather than cover it.
+
+The script refuses to write unless the file lines up with the export: the same
+6,818 units the gate keeps, each with the same reference class and voxel count.
+It records the scores it reproduces in `manifest.prediction` — accuracy 0.791
+(5,396 of 6,818) and macro-F1 0.704, the thesis's figures — and the legend and
+the Partition panel read them from there. The hover text at P₁ names both
+answers, `class (reference)` and `predicted`, and the plot legend carries a
+title in these two modes only, so a screenshot of a prediction cannot be
+mistaken for the reference.
 
 ## Camera readout
 
